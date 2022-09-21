@@ -4,3 +4,4 @@ logs
 Code/taggedData/*.txt
 Results
 oldCode
+*__pycache__*
