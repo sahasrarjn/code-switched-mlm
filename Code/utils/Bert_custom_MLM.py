@@ -45,8 +45,8 @@ from transformers import (
     TrainingArguments,
     set_seed,
 )
-from custom_data_collator import DataCollatorForLanguageModeling
-from custom_language_modeling import LineByLineTextDataset, TextDataset
+from customlibs.custom_data_collator import DataCollatorForLanguageModeling
+from customlibs.custom_language_modeling import LineByLineTextDataset, TextDataset
 
 logger = logging.getLogger(__name__)
 

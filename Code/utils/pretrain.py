@@ -44,8 +44,8 @@ from transformers import (
     TrainingArguments,
     set_seed,
 )
-from custom_data_collator_multifile import DataCollatorForLanguageModeling
-from custom_language_modeling_multifile import LineByLineTextDataset, TextDataset
+from customlibs.custom_data_collator_multifile import DataCollatorForLanguageModeling
+from customlibs.custom_language_modeling_multifile import LineByLineTextDataset, TextDataset
 # from custom_data_collator_mix import DataCollatorForLanguageModeling
 # from custom_language_modeling_multifile import LineByLineTextDataset, TextDataset
 
