@@ -1,4 +1,4 @@
-targetFile=${1:-'en_hi_freq_woemoji.txt'}
+targetFile=${1:-'../en_hi_freq_woemoji.txt'}
 sourceDir=${2:-'../../Data/MLM/withLIDtags/Hindi/woemoji_freq'}
 
 python3 utils/preprocessMLMdata.py \

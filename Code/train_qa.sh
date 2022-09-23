@@ -16,16 +16,16 @@ EPOCH=4
 BATCH_SIZE=4 #1
 MLM_BATCH_SIZE=4 #1
 EVAL_BATCH_SIZE=4 #2
-MAX_SEQ=256
-MLM_MAX_SEQ=256
-PRETR_EPOCH=3
+# MAX_SEQ=256
+# MLM_MAX_SEQ=256
+# PRETR_EPOCH=3
 
 # for seed in 32 42 52 62 72 82 92 102 112 122
-for seed in 22
+for seed in 32
 	do
 	# for ep in 6 7 8 9
 	# for ep in 20 30 40
-	for ep in 1
+	for ep in 20 30 40
     do
 		# for mod in "Trial_TCS_MLM/checkpoint-24720" 
 		for mod in "PretrainedModels/freq_en_hi2/checkpoint-7680"
@@ -37,7 +37,9 @@ for seed in 22
 			--model_type $MODEL_TYPE \
 			--model_name_or_path $MODEL \
 			--do_eval \
+			--save_stats_file logs/train_qa/all \
 			--num_train_epochs $ep \
+			--evaluate_during_training \
 			--per_gpu_train_batch_size $BATCH_SIZE \
 			--per_gpu_eval_batch_size $EVAL_BATCH_SIZE \
 			--max_seq_length $MAX_SEQ \
@@ -48,7 +50,6 @@ for seed in 22
 			--do_train \
 			--train_file train-v2.0.json \
 			--predict_file dev-v2.0.json \
-			--save_stats_file all_8seeds_bert_switch_mlm_realTCS \
 			--model_loc $mod
     	done
   	done 

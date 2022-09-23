@@ -42,7 +42,6 @@ python3.6 $PWD/Code/utils/Bert_custom_MLM.py \
     --overwrite_output_dir \
     --mlm_probability 0.3
 
-exit
 for e in 2 3 4
 do
 echo $e

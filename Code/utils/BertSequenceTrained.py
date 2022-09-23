@@ -249,10 +249,7 @@ def train(args, train_dataset, valid_dataset, model, tokenizer, labels):
             res=i[1]
     # fn=args.model_loc.split('/')[0]
     # fn=fn[15:]
-    print("here")
-    print(res)
     if res is not None:
-        print('kkkkk')
         output_test_predictions_file = os.path.join(args.output_dir,args.save_file_start.replace('_','-')+"_" + str(best_acc)[:5]+"_seed_"+str(args.seed)+"_ep_"+str(args.num_train_epochs)+".txt")
         print(output_test_predictions_file)
         with open(output_test_predictions_file, "w+") as writer:
