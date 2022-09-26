@@ -1,0 +1,44 @@
+mere	HI
+liye	HI
+atm	HI
+stands	EN
+for	EN
+any	EN
+time	EN
+maar	HI
+.	OTHER
+
+sharma	HI
+ji	HI
+ka	HI
+ladka	HI
+made	EN
+bhuvi	HI
+sacrifice	EN
+his	EN
+wicket	HI
+
+ab	HI
+aa	HI
+rahi	HI
+hai	HI
+naa	HI
+king	EN
+of	EN
+the	EN
+world	EN
+waali	HI
+feeling	EN
+?	OTHER
+
+i	EN
+think	EN
+hum	HI
+sarrhay	OTHER
+char	EN
+so	EN
+runzain	OTHER
+banain	OTHER
+ge	EN
+aaj	HI
+.	OTHER

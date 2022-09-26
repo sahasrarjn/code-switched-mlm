@@ -1,13 +1,13 @@
+from genericpath import isfile
+import os
+import argparse
 import numpy as np
 from tqdm import tqdm
-import pdb
-from transformers import PreTrainedTokenizer, AutoTokenizer
-import argparse
 from itertools import groupby
-import os
+from transformers import AutoTokenizer
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--source-dir", type=str, help="Dir of source file(s)")
+parser.add_argument("--source", type=str, help="Dir of source file(s)/File")
 parser.add_argument("--dev", default=False, action="store_true", help="To only consider dev files")
 parser.add_argument("--all", default=False, action="store_true", help="To consider all files")
 parser.add_argument("--debug", default=False, action="store_true", help="Launches the debugger")
@@ -92,8 +92,10 @@ def processDataset(source_file, engSum, count, numSwitch, maskRatio):
 				engSum = engSum + tokenLangs.count('EN')/len(tokenLangs)
 				count = count + 1
 				numSwitch = numSwitch + (len([x[0] for x in groupby(tokenLangs)]) -1)/len(words)
-				if args.mask_type == "around-switch": tokenMasks = implement_mask(words, langs, tokenMap)
-				else: tokenMasks = implement_mask(tokenLangs)
+				if args.mask_type == "around-switch":
+					tokenMasks = implement_mask(words, langs, tokenMap)
+				else:
+					tokenMasks = implement_mask(tokenLangs)
 				assert len(tokenMasks) == len(tokens), "Mask length doesnot match length of tokens"
 				sentence = " ".join(words)
 				sentence_tokenized = tokenizer.tokenize(sentence)
@@ -103,8 +105,10 @@ def processDataset(source_file, engSum, count, numSwitch, maskRatio):
 					#pdb.set_trace()
 				labelSent = ' '.join(tokenMasks)
 				maskRatio = maskRatio + tokenMasks.count('MASK')/len(tokenMasks)
-				if args.debug: pass
-				else: g.write('{}\t{}\n'.format(sentence, labelSent))
+				if args.debug:
+					pass
+				else:
+					g.write('{}\t{}\n'.format(sentence, labelSent))
 			words, langs, tokens, tokenLangs = [],[],[],[]
 			tokenMap = {}
 			continue
@@ -125,18 +129,24 @@ def processDataset(source_file, engSum, count, numSwitch, maskRatio):
 
 	return engSum, count, numSwitch, maskRatio
 
+if os.path.isfile(args.source):
+	files = [args.source]
+else:
+	files = os.listdir(args.source)
+	train_files = [os.path.join(args.source, f) for f in files if 'dev' not in f]
+	dev_files = [os.path.join(args.source, f) for f in files if 'dev' in f]
 
-files = os.listdir(args.source_dir)
-train_files = [os.path.join(args.source_dir, f) for f in files if 'dev' not in f]
-dev_files = [os.path.join(args.source_dir, f) for f in files if 'dev' in f]
+if args.dev:
+	files = dev_files
+elif not args.all and not args.dev and not os.path.isfile(args.source):
+	files = train_files
 
-if args.dev: files = dev_files
-elif not args.all and not args.dev: files = train_files
-
-if args.all: files = [os.path.join(args.source_dir, f) for f in files]
+if args.all:
+	files = [os.path.join(args.source, f) for f in files]
 
 for file in files:
 	print(file)
+	if file[-4:] != '.txt': continue
 	engSum, count, numSwitch, maskRatio = processDataset(file, engSum, count, numSwitch, maskRatio)
 
 if not args.debug: g.close()

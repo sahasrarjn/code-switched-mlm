@@ -9,7 +9,7 @@ import torch
 from filelock import FileLock
 from torch.utils.data.dataset import Dataset
 
-from custom_tokenization_utils import PreTrainedTokenizer
+from customlibs.custom_tokenization_utils import PreTrainedTokenizer
 
 
 logger = logging.getLogger(__name__)

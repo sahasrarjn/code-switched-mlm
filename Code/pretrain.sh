@@ -1,30 +1,72 @@
 # Copyright (c) Microsoft Corporation. Licensed under the MIT license.
 
 REPO=$PWD
-TASK=${1:-NLI_EN_HI}
 MODEL=${2:-bert-base-multilingual-cased}
 MODEL_TYPE=${3:-bert}
-DATA_DIR=${4:-"$REPO/Data/Processed_Data"}
-ROMA="romanised"
-OUT_DIR=${5:-"$REPO/Results"}
-MLM_DATA_FILE=${6:-"$REPO/ishan_data/trial.txt"}
-export NVIDIA_VISIBLE_DEVICES=3
-export CUDA_VISIBLE_DEVICES=3
+OUT_DIR=${4:-$REPO/PretrainedModels/en_hi_switch}
+TRAIN_FILE=${5:-$REPO/Code/taggedData/en_hi_switch_train.txt}
+EVAL_FILE=${6:-$REPO/Code/taggedData/en_hi_switch_eval.txt}
+MLM_PROBABILITY=${7:-0.32}
+
+# export NVIDIA_VISIBLE_DEVICES=2
+export CUDA_VISIBLE_DEVICES=${8:-3}
+export WANDB_DISABLED="true"
 
 EPOCH=4
 BATCH_SIZE=4
 MAX_SEQ=256
 
-echo "Starting Pretraining"
+
+# Standard Switch MLM
+# OUT_DIR='/home/sahasra/pretraining/PretrainedModels/en_hi_switch'
+# TRAIN_FILE='/home/sahasra/pretraining/Code/taggedData/en_hi_switch_train.txt'
+# EVAL_FILE='/home/sahasra/pretraining/Code/taggedData/en_hi_switch_eval.txt'
+# MLM_PROBABILITY=0.32
+
+# FreqMLM
+# OUT_DIR='/home/sahasra/pretraining/PretrainedModels/en_hi_freq'
+# TRAIN_FILE='/home/sahasra/pretraining/Code/taggedData/en_hi_freq_train.txt'
+# EVAL_FILE='/home/sahasra/pretraining/Code/taggedData/en_hi_freq_train.txt'
+# MLM_PROBABILITY=0.33
+
+# Experiment: FreqMLM-Complement
+# OUT_DIR='/home/sahasra/pretraining/PretrainedModels/en_hi_freq_complement'
+# TRAIN_FILE='/home/sahasra/pretraining/Code/taggedData/en_hi_freq_complemen_train.txt'
+# EVAL_FILE='/home/sahasra/pretraining/Code/taggedData/en_hi_freq_complemen_eval.txt'
+# MLM_PROBABILITY=0.273
+
+# Experiment: SwitchMLM-Complement
+# OUT_DIR='/home/sahasra/pretraining/PretrainedModels/en_hi_switch_complement'
+# TRAIN_FILE='/home/sahasra/pretraining/Code/taggedData/en_hi_switch_complemen_train.txt'
+# EVAL_FILE='/home/sahasra/pretraining/Code/taggedData/en_hi_switch_complemen_eval.txt'
+# MLM_PROBABILITY=0.283
+
+# Experiment: Inverted LID SwitchMLM
+# OUT_DIR='/home/sahasra/pretraining/PretrainedModels/en_hi_switch_inverted'
+# TRAIN_FILE='/home/sahasra/pretraining/Code/taggedData/en_hi_switch_inverted_train.txt'
+# EVAL_FILE='/home/sahasra/pretraining/Code/taggedData/en_hi_switch_inverted_eval.txt'
+# MLM_PROBABILITY=0.32
+
+# Experiment: Maskable OTHER tokens (on top of FreqMLM)
+OUT_DIR='/home/sahasra/pretraining/PretrainedModels/en_hi_freq_maskableOTHER'
+TRAIN_FILE='/home/sahasra/pretraining/Code/taggedData/en_hi_freq_maskableOTHER_train.txt'
+EVAL_FILE='/home/sahasra/pretraining/Code/taggedData/en_hi_freq_maskableOTHER_eval.txt'
+MLM_PROBABILITY=0.234
+
+
+echo "Starting Pretraining With:"
+echo "Train: $TRAIN_FILE"
+echo "Eval: $EVAL_FILE"
+echo "Output Here: $OUT_DIR"
 
 python3.6 $PWD/Code/utils/pretrain.py \
     --model_name_or_path $MODEL \
     --model_type $MODEL_TYPE \
     --config_name $MODEL   \
     --tokenizer_name  $MODEL \
-    --output_dir $REPO/PretrainedModels/freq_en_hi_try1 \
-    --train_data_file $REPO/Code/taggedData/en_hi_freq_train.txt \
-    --eval_data_file $REPO/Code/taggedData/en_hi_freq_eval.txt \
+    --output_dir $OUT_DIR \
+    --train_data_file $TRAIN_FILE \
+    --eval_data_file $EVAL_FILE \
     --mlm \
     --line_by_line \
     --do_train \
@@ -38,4 +80,7 @@ python3.6 $PWD/Code/utils/pretrain.py \
     --save_steps 240 \
     --save_total_limit 1 \
     --overwrite_output_dir \
-    --mlm_probability 0.32
+    --mlm_probability $MLM_PROBABILITY
+
+echo "Find Output Here: $OUT_DIR"
+

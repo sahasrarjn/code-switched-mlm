@@ -6,7 +6,7 @@ import torch
 from torch.nn.utils.rnn import pad_sequence
 import pdb
 
-from custom_tokenization_utils import PreTrainedTokenizer
+from customlibs.custom_tokenization_utils import PreTrainedTokenizer
 
 
 class DataCollator(ABC):

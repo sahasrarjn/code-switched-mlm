@@ -17,6 +17,8 @@ from transformers import (
 from sklearn.metrics import f1_score, precision_score, recall_score
 
 
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -255,8 +257,8 @@ def train(args, train_dataset, valid_dataset, model, tokenizer, labels):
         with open(output_test_predictions_file, "w+") as writer:
             writer.write('\n'.join(res))
 
-    print(train_losses)
-    print(val_losses)
+    print("Train losses:",  train_losses)
+    print("Val losses:", val_losses)
     print(epnum)
     
     # with open('to_plot2.pkl', 'wb') as f:

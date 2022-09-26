@@ -5,3 +5,5 @@ Code/taggedData/*.txt
 Results
 oldCode
 *__pycache__*
+runs
+wandb

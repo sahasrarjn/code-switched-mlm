@@ -1,10 +1,22 @@
-targetFile=${1:-'../en_hi_freq_woemoji.txt'}
-sourceDir=${2:-'../../Data/MLM/withLIDtags/Hindi/woemoji_freq'}
+# Experiment Switch Inverted LID
+# Replace EN with HI and HI with EN (example)
+# $1 = '../en_hi_switch_inverted.txt'
+# $2 = '../../experiments/invertLID'
 
-python3 utils/preprocessMLMdata.py \
-    --source-dir $sourceDir \
+# Standard Switch MLM
+# Use combined.txt
+# $1 = '../en_hi_switch.txt'
+# $2 = '../../../Data/MLM/withLIDtags/Hindi/combined'
+
+# FreqMLM
+# $1 = '../en_hi_freq.txt'
+# $2 = '../../../freqMLM/data/CSdata/emoji/combined-freqmlm-lidtags-processed-noabm.txt'
+
+targetFile=${1:-'../en_hi_switch.txt'}
+sourceDir=${2:-'../../../Data/MLM/withLIDtags/Hindi/combined'}
+
+python3 preprocessMLMdata.py \
+    --source $sourceDir \
     --target $targetFile \
     --tokenizer-name bert-base-multilingual-cased \
     --mask-type around-switch \
-    # --debug
-    # --source-dir $PWD/Data/MLM/freqMLMwithLIDtags \

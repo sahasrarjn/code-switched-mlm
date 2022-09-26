@@ -29,7 +29,7 @@ OUTPUT_DIR_FINE="Results/switch_en_hi"
 for seed in  32
 # for seed in  32 42 52 62 72 82 92 102 112 122
 do
-	for epochs in 20
+	for epochs in 1
 	do
 		mod="PretrainedModels/switch_en_hi/final_model"
 		saveFileStart="switch_en_hi"
@@ -43,12 +43,12 @@ do
 		--train_batch_size $BATCH_SIZE \
 		--logging_steps 100 \
 		--eval_batch_size $BATCH_SIZE \
-		--save_steps 0 \
+		--save_steps -1 \
 		--seed $seed  \
 		--learning_rate 1.5e-5 \
 		--do_train \
 		--max_seq_length $MAX_SEQ \
-		--gradient_accumulation_steps 5 \
+		--gradient_accumulation_steps 1 \
 		--model_loc $mod \
 		--save_file_start $saveFileStart
 	done

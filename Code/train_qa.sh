@@ -9,26 +9,24 @@ OUT_DIR=${5:-"$REPO/Results"}
 # MLM_DATA_FILE=${6:-"$REPO/Data/MLM/all_combined/train_roman.txt"}
 MLM_DATA_FILE=${6:-"$REPO/ishan_data/ishan_plus_65k.txt"}
 # MLM_DATA_FILE=${6:-"$REPO/ishan_data/ishan_plus_65k_plus_qa.txt"}
-export NVIDIA_VISIBLE_DEVICES=3
-export CUDA_VISIBLE_DEVICES=3
+# export NVIDIA_VISIBLE_DEVICES=2
+export CUDA_VISIBLE_DEVICES=2
 
 EPOCH=4
 BATCH_SIZE=4 #1
 MLM_BATCH_SIZE=4 #1
 EVAL_BATCH_SIZE=4 #2
-# MAX_SEQ=256
+MAX_SEQ=256
 # MLM_MAX_SEQ=256
 # PRETR_EPOCH=3
 
-# for seed in 32 42 52 62 72 82 92 102 112 122
-for seed in 32
+for seed in 32 42 52 62 72 82 92 102 112 122
 	do
-	# for ep in 6 7 8 9
-	# for ep in 20 30 40
+	echo "SEED: $seed"
 	for ep in 20 30 40
     do
-		# for mod in "Trial_TCS_MLM/checkpoint-24720" 
-		for mod in "PretrainedModels/freq_en_hi2/checkpoint-7680"
+		echo "EPOCHS: $ep"
+		for mod in "PretrainedModels/en_hi_switch_inverted/checkpoint-7920"
 		do
 		echo $mod
 		python3.6 $PWD/Code/utils/run_squad_vanilla.py \
