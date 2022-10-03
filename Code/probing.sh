@@ -1,16 +1,13 @@
 # Copyright (c) Microsoft Corporation. Licensed under the MIT license.
 
-REPO=$PWD
 TASK=${1:-NLI_EN_HI}
-MODEL=${2:-bert-base-multilingual-cased}
-MODEL_TYPE=${3:-bert}
-OUT_DIR=${4:-$REPO/PretrainedModels/en_hi_switch}
-TRAIN_FILE=${5:-$REPO/Code/taggedData/en_hi_switch_train.txt}
-EVAL_FILE=${6:-$REPO/Code/taggedData/en_hi_switch_eval.txt}
-MLM_PROBABILITY=${7:-0.32}
+MODEL=${2:-/home/sahasra/pretraining/PretrainedModels/en_hi_baseline/checkpoint-7920}
+OUT_DIR=${4:-/home/sahasra/pretraining/Code/experiments/probing-task/temp-runs}
+TRAIN_FILE=${5:-/home/sahasra/pretraining/Code/taggedData/en_hi_baseline_train.txt}
+EVAL_FILE=${6:-/home/sahasra/pretraining/Code/taggedData/en_hi_baseline_eval.txt}
+MLM_PROBABILITY=${7:-0.15}
 
-# export NVIDIA_VISIBLE_DEVICES=2
-export CUDA_VISIBLE_DEVICES=${8:-3}
+export CUDA_VISIBLE_DEVICES=${8:-0}
 export WANDB_DISABLED="true"
 
 EPOCH=4
@@ -60,16 +57,13 @@ MAX_SEQ=256
 # MLM_PROBABILITY=0.234
 
 
-echo "Starting Pretraining With:"
+echo "Starting Probing With:"
 echo "Train: $TRAIN_FILE"
 echo "Eval: $EVAL_FILE"
 echo "Output Here: $OUT_DIR"
 
-python3.6 $PWD/Code/utils/pretrain.py \
-    --model_name_or_path $MODEL \
-    --model_type $MODEL_TYPE \
-    --config_name $MODEL   \
-    --tokenizer_name  $MODEL \
+python3.6 $PWD/Code/utils/probing.py \
+    --model_path $MODEL \
     --output_dir $OUT_DIR \
     --train_data_file $TRAIN_FILE \
     --eval_data_file $EVAL_FILE \

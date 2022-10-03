@@ -7,3 +7,4 @@ oldCode
 *__pycache__*
 runs
 wandb
+oldPretrainedModels

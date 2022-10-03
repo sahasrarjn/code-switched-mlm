@@ -22,6 +22,7 @@ import logging
 import os
 import random
 import timeit
+import wandb
 
 import numpy as np
 import torch
@@ -206,14 +207,16 @@ def train(args, train_dataset, model, tokenizer):
                         if results['f1']>best_f1:
                             best_f1=results['f1']
                             if args.save_model:
-                            	logger.info("New best f1 at %s, saving model",str(best_f1))
-                            	# model.save_pretrained('xlm_r_pretr_roman_hi_squad')
-                            	# tokenizer.save_pretrained('xlm_r_pretr_roman_hi_squad')
-                            	# torch.save(args, os.path.join('xlm_r_pretr_roman_hi_squad', "training_args.bin"))
+                                logger.info("New best f1 at %s, saving model",str(best_f1))
+                                # model.save_pretrained('xlm_r_pretr_roman_hi_squad')
+                                # tokenizer.save_pretrained('xlm_r_pretr_roman_hi_squad')
+                                # torch.save(args, os.path.join('xlm_r_pretr_roman_hi_squad', "training_args.bin"))
                             else:
                                 logger.info("New best f1 at %s, no model saved",str(best_f1))
                         else:
-                        	logger.info(" best f1 still at %s, no model saved",str(best_f1))
+                            logger.info(" best f1 still at %s, no model saved",str(best_f1))
+                        wandb.log({"f1": results['f1']})
+                        wandb.log({"best_f1": best_f1})
                     #     for key, value in results.items():
                     #         tb_writer.add_scalar("eval_{}".format(key), value, global_step)
                     # tb_writer.add_scalar("lr", scheduler.get_lr()[0], global_step)
@@ -226,9 +229,9 @@ def train(args, train_dataset, model, tokenizer):
         if args.max_steps > 0 and global_step > args.max_steps:
             train_iterator.close()
             break
-        logger.info('training loss QA= %s',str(lossqa/iters))
-    # if args.local_rank in [-1, 0]:
-    #     tb_writer.close()
+        training_loss = lossqa/iters
+        logger.info('training loss QA= %s',str(training_loss))
+        wandb.log({"training_loss_QA": training_loss})
 
     return global_step, tr_loss / global_step
 
@@ -608,7 +611,22 @@ def main():
         required=True,
         help="The file to write fi values.",
     )
+    parser.add_argument(
+        "--wandb",
+        action="store_true",
+        help="specify to use wandb logging"
+    )
+    parser.add_argument(
+        "--experiment-name",
+        default="en_hi_awesome_experiment",
+        type=str,
+        help="display name of the experiment on wandb"
+    )
     args = parser.parse_args()
+
+    # WANDB STUFF
+    if args.wandb:
+        wandb.init(project="MLMPretraining-QA", entity="csalt-pretraining", name=args.experiment_name)
 
     if args.doc_stride >= args.max_seq_length - args.max_query_length:
         logger.warning(
@@ -708,6 +726,7 @@ def main():
         results.update(result)
     logger.info('Seed is %s',str(args.seed))
     logger.info("Results: {}".format(results))
+    wandb.log({"f1": results['f1']})
     with open(args.save_stats_file+'.txt','a+') as fres:
         fres.write('epoch is '+ str(args.num_train_epochs)+' seed is ' + str(args.seed)+' model is '+args.model_loc+' f1 is '+str(result['f1'])+'\n')
 

@@ -10,7 +10,7 @@ OUT_DIR=${5:-"$REPO/Results"}
 MLM_DATA_FILE=${6:-"$REPO/ishan_data/ishan_plus_65k.txt"}
 # MLM_DATA_FILE=${6:-"$REPO/ishan_data/ishan_plus_65k_plus_qa.txt"}
 # export NVIDIA_VISIBLE_DEVICES=2
-export CUDA_VISIBLE_DEVICES=2
+export CUDA_VISIBLE_DEVICES=0
 
 EPOCH=4
 BATCH_SIZE=4 #1
@@ -20,13 +20,19 @@ MAX_SEQ=256
 # MLM_MAX_SEQ=256
 # PRETR_EPOCH=3
 
+wandb login 98d0804992a30ee86b8971c931bffcfeff2d5640
+
+pretrainModel='en_hi_baseline'
+
+# for seed in 32
 for seed in 32 42 52 62 72 82 92 102 112 122
 	do
 	echo "SEED: $seed"
-	for ep in 20 30 40
+	for ep in 40
+	# for ep in 20 30 40
     do
 		echo "EPOCHS: $ep"
-		for mod in "PretrainedModels/en_hi_switch_inverted/checkpoint-7920"
+		for mod in "PretrainedModels/${pretrainModel}/checkpoint-*"
 		do
 		echo $mod
 		python3.6 $PWD/Code/utils/run_squad_vanilla.py \
@@ -48,7 +54,9 @@ for seed in 32 42 52 62 72 82 92 102 112 122
 			--do_train \
 			--train_file train-v2.0.json \
 			--predict_file dev-v2.0.json \
-			--model_loc $mod
+			--model_loc $mod \
+			--wandb \
+			--experiment-name "${pretrainModel}_seed${seed}_epoch${ep}"
     	done
   	done 
 done

@@ -1,12 +1,13 @@
 # Copyright (c) Microsoft Corporation. Licensed under the MIT license.
 
-import argparse
-import logging
 import os
-import random
-import numpy as np
+import wandb
 import torch
 import pickle
+import random
+import logging
+import argparse
+import numpy as np
 from torch.utils.data import DataLoader, SequentialSampler, RandomSampler, Dataset
 from tqdm import tqdm, trange
 from transformers import (
@@ -202,6 +203,9 @@ def train(args, train_dataset, valid_dataset, model, tokenizer, labels):
                             print(e)
                     else:
                         logger.info("  Best F1 still at = %s", str(best_f1_score))
+
+                    wandb.log({'f1': results.get('f1')*100})
+                    wandb.log({'best_f1': best_f1_score*100})
                         
                     # if results.get('f1') > best_f1_score:
                     #     best_f1_score = results.get('f1')
@@ -451,8 +455,24 @@ def main():
         required=False,
         help="The file to write fi values.",
     )
+    parser.add_argument(
+        "--wandb",
+        action="store_true",
+        help="specify to use wandb logging"
+    )
+    parser.add_argument(
+        "--experiment-name",
+        default="en_hi_awesome_experiment",
+        type=str,
+        help="display name of the experiment on wandb"
+    )
 
     args = parser.parse_args()
+
+    # WANDB SETUP
+    if args.wandb:
+        wandb.init(project="MLMPretraining-SA", entity="csalt-pretraining", name=args.experiment_name)
+
     device = torch.device("cuda" if torch.cuda.is_available() else 'cpu')
     args.device = device
 
