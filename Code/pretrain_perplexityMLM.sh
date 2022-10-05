@@ -15,57 +15,51 @@ EPOCH=4
 BATCH_SIZE=4
 MAX_SEQ=256
 
+function getMLMprob {
+    file=$1
+    mask_cnt=$(grep -o -i MASK ${file} | wc -l)
+    nomask_cnt=$(grep -o -i NOMASK ${file} | wc -l)
+    total_tokens=$(python3 -c "print($mask_cnt + $nomask_cnt)")
+    echo $(python3 -c "print( 0.15 * $total_tokens / $mask_cnt)" )
+}
+
+
 echo "starting perplexity update"
 
-python3.6 $PWD/Code/utils/Bert_custom_MLM.py \
-    --model_name_or_path $MODEL \
-    --model_type $MODEL_TYPE \
-    --tokenizer_name  $MODEL \
-    --config_name $MODEL   \
-    --output_dir $REPO/PretrainedModels/bert_realcs_perpupd_seed100_hindi \
-    --train_data_file $REPO/Code/utils/PerplexityMasking/tmp/train.txt \
-    --eval_data_file $REPO/Code/utils/PerplexityMasking/tmp/eval.txt \
-    --mlm \
-    --first \
-    --line_by_line \
-    --do_train \
-    --do_eval \
-    --evaluate_during_training \
-    --per_device_train_batch_size $BATCH_SIZE \
-    --per_device_eval_batch_size $BATCH_SIZE \
-    --gradient_accumulation_steps 20\
-    --num_train_epochs 1\
-    --logging_steps 100 \
-    --seed 100 \
-    --save_steps 240 \
-    --save_total_limit 1 \
-    --overwrite_output_dir \
-    --mlm_probability 0.3
+echo "Computing model scores"
+python3.6 $PWD/Code/utils/PerplexityMasking/compute_model_score.py \
+    -m bert-base-multilingual-cased \
+    -l $PWD/PretrainedModels/en_hi_baseline/final_model \
+    -f $PWD/Data/MLM/combined/combined.txt \
+    -o $PWD/Code/utils/PerplexityMasking/data/train_scores.txt \
+    -d cuda
+    # -f $PWD/Code/utils/PerplexityMasking/real_CS_data/spanish_switch_sents.txt \
 
-for e in 2 3 4
-do
-echo $e
-python3.6 $PWD/Code/PerplexityMasking/compute_model_score.py \
--m bert-base-multilingual-cased \
--l $PWD/PretrainedModels/bert_realcs_perpupd_seed100_hindi/final_model \
--f $PWD/Data/MLM/combined/combined.txt \
--o $PWD/Code/PerplexityMasking/tmp/train_scores.txt \
--d cuda \
-# -f $PWD/Code/PerplexityMasking/real_CS_data/spanish_switch_sents.txt \
+echo "Creating masks"
+python3.6 $PWD/Code/utils/PerplexityMasking/create_masks.py \
+    -s $PWD/Code/utils/PerplexityMasking/data/train_scores.txt \
+    -i $PWD/Data/MLM/combined/combined.txt \
+    -o $PWD/Code/utils/PerplexityMasking/data/all.txt \
 
-python3.6 $PWD/Code/PerplexityMasking/create_masks.py
+echo "Generating train / eval file"
+python3.6 $PWD/Code/utils/PerplexityMasking/split_train_eval.py \
+    -f $PWD/Code/utils/PerplexityMasking/data/all.txt \
+    -t $PWD/Code/utils/PerplexityMasking/data/train.txt \
+    -e $PWD/Code/utils/PerplexityMasking/data/eval.txt \
+    --frac 0.1
 
-python3.6 $PWD/Code/PerplexityMasking/split_train_eval.py
+file="$PWD/Code/utils/PerplexityMasking/data/all.txt"
+mlm_probability=$(getMLMprob ${file})
+echo "MLM probability: ${mlm_probability}"
 
 echo "starting pretraining"
-
 python3.6 $PWD/Code/utils/Bert_custom_MLM.py \
-    --model_name_or_path $REPO/PretrainedModels/bert_realcs_perpupd_seed100_hindi \
+    --model_name_or_path $REPO/PretrainedModels/en_hi_baseline \
     --model_type $MODEL_TYPE \
     --tokenizer_name  $MODEL \
-    --output_dir $REPO/PretrainedModels/bert_realcs_perpupd_seed100_hindi \
-    --train_data_file $REPO/Code/PerplexityMasking/tmp/train.txt \
-    --eval_data_file $REPO/Code/PerplexityMasking/tmp/eval.txt \
+    --output_dir $REPO/PretrainedModels/en_hi_perp \
+    --train_data_file $REPO/Code/utils/PerplexityMasking/data/train.txt \
+    --eval_data_file $REPO/Code/utils/PerplexityMasking/data/eval.txt \
     --mlm \
     --line_by_line \
     --do_train \
@@ -80,6 +74,4 @@ python3.6 $PWD/Code/utils/Bert_custom_MLM.py \
     --save_steps 240 \
     --save_total_limit 1 \
     --overwrite_output_dir \
-    --mlm_probability 0.3 
-    # --num_train_epochs 1\
-done
+    --mlm_probability $mlm_probability
