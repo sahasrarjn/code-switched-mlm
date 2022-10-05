@@ -1,5 +1,6 @@
 # model name, file names, % words
 import string
+import argparse
 from statistics import mean, stdev
 import numpy as np
 from scipy import stats
@@ -64,9 +65,14 @@ def all_masks(scores, sentences, outfile):
     print(avg_msk/len(scores))
 
 if __name__=='__main__':
-    # scores = read_scores('Code/PerplexityMasking/tmp/train_scores.txt')
-    # sents = read_sents('Code/PerplexityMasking/real_CS_data/spanish_switch_sents.txt')
-    # all_masks(scores, sents, 'Code/PerplexityMasking/tmp/all.txt')
-    scores = read_scores('scores_filttcs_train.txt')
-    sents = read_sents('../../Data/MLM/TCS/filtered_TCS_tr_realCSsize.txt')
-    all_masks(scores, sents, 'mask_pscores_filttcs_token.txt')
+    desc = "Use correlation score to identify maskable tokens"
+    parser = argparse.ArgumentParser(description=desc)
+
+    parser.add_argument("-s", "--score_file", required=True, help="File with perplexity scores")
+    parser.add_argument("-i", "--input_file", required=True, help="Input file with corresponding sentences")
+    parser.add_argument("-o", "--output_file", required=True, help="Output file")
+    args = parser.parse_args()
+
+    scores = read_scores(args.score_file)
+    sents = read_sents(args.input_file)
+    all_masks(scores, sents, args.output_file)

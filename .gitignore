@@ -8,3 +8,4 @@ oldCode
 runs
 wandb
 oldPretrainedModels
+*.txt

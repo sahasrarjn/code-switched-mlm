@@ -44,10 +44,14 @@ from transformers import (
     TrainingArguments,
     set_seed,
 )
+
+# For experiment: Incorporate AMB tokens
+from customlibs.custom_data_collator_multifile_amb import DataCollatorForLanguageModeling_amb
+from customlibs.custom_language_modeling_multifile_amb import LineByLineTextDataset_amb
+
+# For all MLM techniques
 from customlibs.custom_data_collator_multifile import DataCollatorForLanguageModeling
 from customlibs.custom_language_modeling_multifile import LineByLineTextDataset, TextDataset
-# from custom_data_collator_mix import DataCollatorForLanguageModeling
-# from custom_language_modeling_multifile import LineByLineTextDataset, TextDataset
 
 
 
@@ -130,6 +134,21 @@ class DataTrainingArguments:
     overwrite_cache: bool = field(
         default=False, metadata={"help": "Overwrite the cached training and evaluation sets"}
     )
+    amb_tokens: bool = field(
+        default=False, metadata={"help": "Experiment to incorporate ambiguous tokens"}
+    )
+    mask0_probability: float = field(
+        default=0.,
+        metadata={"help": "Probability of MASK0 tokens in the input file"}
+    )
+    mask1_probability: float = field(
+        default=0.,
+        metadata={"help": "Probability of MASK1 tokens in the input file"}
+    )
+    mask2_probability: float = field(
+        default=0.,
+        metadata={"help": "Probability of MASK2 tokens in the input file"}
+    )
 
 
 def get_dataset(
@@ -140,7 +159,10 @@ def get_dataset(
 ):
     files = args.eval_data_file if evaluate else args.train_data_file
     if args.line_by_line:
-        return LineByLineTextDataset(tokenizer=tokenizer, files=files, block_size=args.block_size)
+        if args.amb_tokens:
+            return LineByLineTextDataset_amb(tokenizer=tokenizer, files=files, block_size=args.block_size)
+        else:
+            return LineByLineTextDataset(tokenizer=tokenizer, files=files, block_size=args.block_size)
     else:
         return TextDataset(
             tokenizer=tokenizer,
@@ -263,9 +285,23 @@ def main():
             max_span_length=data_args.max_span_length,
         )
     else:
-        data_collator = DataCollatorForLanguageModeling(
-            tokenizer=tokenizer, mlm=data_args.mlm, mlm_probability=data_args.mlm_probability
-        )
+        if data_args.amb_tokens:
+            data_collator = DataCollatorForLanguageModeling_amb(
+                tokenizer=tokenizer, 
+                mlm=data_args.mlm, 
+                mlm_probability=[
+                    data_args.mask0_probability,
+                    data_args.mask1_probability,
+                    data_args.mask2_probability
+                ]
+                # mask0_probability=data_args.mask0_probability,
+                # mask1_probability=data_args.mask1_probability,
+                # mask2_probability=data_args.mask2_probability,
+            )
+        else:
+            data_collator = DataCollatorForLanguageModeling(
+                tokenizer=tokenizer, mlm=data_args.mlm, mlm_probability=data_args.mlm_probability
+            )
 
     # Initialize our Trainer
     training_args.load_best_model_at_end=True

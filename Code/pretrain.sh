@@ -10,12 +10,23 @@ EVAL_FILE=${6:-$REPO/Code/taggedData/en_hi_switch_eval.txt}
 MLM_PROBABILITY=${7:-0.32}
 
 # export NVIDIA_VISIBLE_DEVICES=2
-export CUDA_VISIBLE_DEVICES=${8:-3}
+export CUDA_VISIBLE_DEVICES=${8:-2}
 export WANDB_DISABLED="true"
 
 EPOCH=4
 BATCH_SIZE=4
 MAX_SEQ=256
+
+function getMLMprob {
+    file=$1
+    mask_cnt=$(grep -o -i MASK ${file} | wc -l)
+    nomask_cnt=$(grep -o -i NOMASK ${file} | wc -l)
+    total_tokens=$(python3 -c "print($mask_cnt + $nomask_cnt)")
+    echo $(python3 -c "print( 0.15 * $total_tokens / $mask_cnt)" )
+}
+
+# TODO: use this function to automate
+
 
 # Baseline MLM
 # OUT_DIR='/home/sahasra/pretraining/PretrainedModels/en_hi_baseline'
@@ -59,6 +70,15 @@ MAX_SEQ=256
 # EVAL_FILE='/home/sahasra/pretraining/Code/taggedData/en_hi_freq_maskableOTHER_eval.txt'
 # MLM_PROBABILITY=0.234
 
+# Experiment: Incorporate AMB tokens (on top of FreqMLM)
+OUT_DIR='/home/sahasra/pretraining/PretrainedModels/en_hi_freq_AMB'
+TRAIN_FILE='/home/sahasra/pretraining/Code/experiments/amb-tokens/en_hi_freq_amb_train.txt'
+EVAL_FILE='/home/sahasra/pretraining/Code/experiments/amb-tokens/en_hi_freq_amb_eval.txt'
+# --amb_tokens
+# --mask0_probability 0.23
+# --mask1_probability 0.2
+# --mask2_probability 0.03
+
 
 echo "Starting Pretraining With:"
 echo "Train: $TRAIN_FILE"
@@ -86,7 +106,11 @@ python3.6 $PWD/Code/utils/pretrain.py \
     --save_steps 240 \
     --save_total_limit 1 \
     --overwrite_output_dir \
-    --mlm_probability $MLM_PROBABILITY
+    --mlm_probability $MLM_PROBABILITY \
+    --amb_tokens \
+    --mask0_probability 0.23 \
+    --mask1_probability 0.2 \
+    --mask2_probability 0.03
 
 echo "Find Output Here: $OUT_DIR"
 

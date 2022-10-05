@@ -115,9 +115,12 @@ def processDataset(source_file, engSum, count, numSwitch, maskRatio):
 		try:
 			word, label = l.split('\t')
 		except:
-			print(l)
-			print(words, langs)
-			exit(1)
+			try:
+				word, label = l.split(' ')
+			except:
+				print(l)
+				print(words, langs)
+				raise Exception('Invalid sep token')
 		if word  == '' or word == " ": continue
 		words.append(word)
 		langs.append(label)
