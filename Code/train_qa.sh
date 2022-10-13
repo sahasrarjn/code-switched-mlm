@@ -10,7 +10,7 @@ OUT_DIR=${5:-"$REPO/Results"}
 MLM_DATA_FILE=${6:-"$REPO/ishan_data/ishan_plus_65k.txt"}
 # MLM_DATA_FILE=${6:-"$REPO/ishan_data/ishan_plus_65k_plus_qa.txt"}
 # export NVIDIA_VISIBLE_DEVICES=2
-export CUDA_VISIBLE_DEVICES=3
+export CUDA_VISIBLE_DEVICES=1
 
 # EPOCH=4
 BATCH_SIZE=4 #1
@@ -22,10 +22,13 @@ MAX_SEQ=256
 
 wandb login 98d0804992a30ee86b8971c931bffcfeff2d5640
 
-pretrainModel='en_hi_perp'
+# pretrainModel='en_hi_freq_AMB_r2'
+pretrainModel='en_hi_switch_inverted_sanity'
 
 # for seed in 32
-for seed in 32 42 52 62 72 82 92 102 112 122
+# for seed in 32 42 52 62 72
+# for seed in 82 92 102 112 122
+for seed in 103 113 123
 	do
 	echo "SEED: $seed"
 	# for ep in 40

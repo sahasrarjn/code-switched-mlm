@@ -215,8 +215,9 @@ def train(args, train_dataset, model, tokenizer):
                                 logger.info("New best f1 at %s, no model saved",str(best_f1))
                         else:
                             logger.info(" best f1 still at %s, no model saved",str(best_f1))
-                        wandb.log({"f1": results['f1']})
-                        wandb.log({"best_f1": best_f1})
+                        if args.wandb:
+                            wandb.log({"f1": results['f1']})
+                            wandb.log({"best_f1": best_f1})
                     #     for key, value in results.items():
                     #         tb_writer.add_scalar("eval_{}".format(key), value, global_step)
                     # tb_writer.add_scalar("lr", scheduler.get_lr()[0], global_step)
@@ -231,7 +232,8 @@ def train(args, train_dataset, model, tokenizer):
             break
         training_loss = lossqa/iters
         logger.info('training loss QA= %s',str(training_loss))
-        wandb.log({"training_loss_QA": training_loss})
+        if args.wandb:
+            wandb.log({"training_loss_QA": training_loss})
 
     return global_step, tr_loss / global_step
 
@@ -726,7 +728,8 @@ def main():
         results.update(result)
     logger.info('Seed is %s',str(args.seed))
     logger.info("Results: {}".format(results))
-    wandb.log({"f1": results['f1']})
+    if args.wandb: 
+        wandb.log({"f1": results['f1']})
     with open(args.save_stats_file+'.txt','a+') as fres:
         fres.write('epoch is '+ str(args.num_train_epochs)+' seed is ' + str(args.seed)+' model is '+args.model_loc+' f1 is '+str(result['f1'])+'\n')
 

@@ -1,4 +1,5 @@
 import os
+import json
 import wandb
 import logging
 import numpy as np
@@ -34,12 +35,18 @@ class ModelArguments:
     model_path: Optional[str] = field(
         default=None,
         metadata={
-            "help": "The model checkpoint for weights initialization. Leave None if you want to train a model from scratch."
+            "help": "Path to the pretrained weights for the model. This is the path to the baseline if 'conditional-probing'"
+        },
+    )
+    model_conditional_path: Optional[str] = field(
+        default=None,
+        metadata={
+            "help": "Path to the pretrained weights for the model. Path to the specialized model like switchMLM/freqMLM"
         },
     )
     model_type: Optional[str] = field(
         default="linear-head",
-        metadata={"help": "Choose from linear-head or bilstm-head"},
+        metadata={"help": "Choose from linear-head or bilstm-head or conditional-linear-head"},
     )
     cache_dir: Optional[str] = field(
         default=None,
@@ -122,8 +129,8 @@ class BertBiLSTMHead(nn.Module):
         bert_embedding, _ = self.bert(inp)
         lstm_out, (_, _) = self.lstm(bert_embedding)
         linear_output = self.linear(lstm_out)
-        probs = F.log_softmax(linear_output, dim=-1)
-        return probs
+        logprobs = F.log_softmax(linear_output, dim=-1)
+        return logprobs
 
 
 class BertLinearHead(nn.Module):
@@ -135,13 +142,35 @@ class BertLinearHead(nn.Module):
     def forward(self, inp):
         bert_embedding, _ = self.bert(inp)
         linear_output = self.linear(bert_embedding)
-        probs = F.log_softmax(linear_output, dim=-1)
-        return probs
+        logprobs = F.log_softmax(linear_output, dim=-1)
+        return logprobs
+
+
+class BertConditionalLinearHead(nn.Module):
+    def __init__(self, bert1, bert2=None, out_embed=768) -> None:
+        super(BertConditionalLinearHead, self).__init__()
+        self.bert1 = bert1
+        self.bert2 = bert2
+        self.linear = nn.Linear(2*out_embed, 2)
+    
+    def forward(self, inp):
+        bert1_embedding, _ = self.bert1(inp)
+        if self.bert2 is not None:
+            bert2_embedding, _ = self.bert2(inp)
+        else:
+            bert2_embedding = torch.zeros_like(bert1_embedding)
+        concat_embed = torch.cat((bert1_embedding, bert2_embedding), dim=-1)
+        linear_output = self.linear(concat_embed)
+        logprobs = F.log_softmax(linear_output, dim=-1)
+        return logprobs
 
 
 def main():
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
+
+    if model_args.model_conditional_path == 'None':
+        model_args.model_conditional_path = None
 
     # WANDB STUFF
     if model_args.wandb:
@@ -188,24 +217,39 @@ def main():
     set_seed(training_args.seed)
 
     # Load pretrained model and tokenizer
-    config = BertConfig.from_pretrained(model_args.model_path)
     tokenizer = BertTokenizer.from_pretrained('bert-base-multilingual-cased')
-    bert = BertModel.from_pretrained(
+
+    config1 = BertConfig.from_pretrained(model_args.model_path)
+    bert1 = BertModel.from_pretrained(
         model_args.model_path + '/pytorch_model.bin',
-        config=config
+        config=config1
     )
-
-    bert.resize_token_embeddings(len(tokenizer))
-
+    bert1.resize_token_embeddings(len(tokenizer))
     # Freeze bert layers
-    for name, param in bert.named_parameters():
+    for name, param in bert1.named_parameters():
         if 'classifier' not in name:
             param.requires_grad = False
-    
+
+    # Load specialized model if present for conditional probing
+    bert2 = None
+    if model_args.model_conditional_path is not None:
+        config2 = BertConfig.from_pretrained(model_args.model_conditional_path)
+        bert2 = BertModel.from_pretrained(
+            model_args.model_conditional_path + '/pytorch_model.bin',
+            config=config2
+        )
+        bert2.resize_token_embeddings(len(tokenizer))
+        # Freeze bert layers
+        for name, param in bert2.named_parameters():
+            if 'classifier' not in name:
+                param.requires_grad = False
+
     if model_args.model_type == "bilstm-head":
-        model = BertBiLSTMHead(bert, 768, 256)
+        model = BertBiLSTMHead(bert1, 768, 256)
     elif model_args.model_type == "linear-head":
-        model = BertLinearHead(bert, 768)
+        model = BertLinearHead(bert1, 768)
+    elif model_args.model_type == "conditional-linear-head":
+        model = BertConditionalLinearHead(bert1, bert2, 768)
     model.to(device)
 
     if data_args.block_size <= 0:
@@ -231,23 +275,28 @@ def main():
     
     EPOCH_METRICS = {
         "val_losses": [],
-        "val_accs": []
+        "val_acc_hard_hamming": [],
+        "val_acc_soft_hamming": []
     }
 
     # Eval at start
     logger.info(f"EVAL AT START")
-    val_losses, accuracy_table = evaluate(model, eval_dataset, loss_fn, device)
+    val_losses, hhtable, shtable = evaluate(model, eval_dataset, loss_fn, device)
 
     logger.info(f"Val Loss: {np.mean(val_losses)}")
-    logger.info(f"Val Accuracy: {np.sum(accuracy_table[:,0])/np.sum(accuracy_table[:,1])}")
+    logger.info(f"Val Hard Hamming Accuracy: {np.sum(hhtable[:,0])/np.sum(hhtable[:,1])}")
+    logger.info(f"Val Soft Hamming Accuracy: {np.sum(shtable[:,0])/np.sum(shtable[:,1])}")
     if model_args.wandb:
         wandb.log({"val_loss": np.mean(val_losses)})
-        wandb.log({"val_acc": np.sum(accuracy_table[:,0])/np.sum(accuracy_table[:,1])})
+        wandb.log({"val_acc_hard_hamming": np.sum(hhtable[:,0])/np.sum(hhtable[:,1])})
+        wandb.log({"val_acc_soft_hamming": np.sum(shtable[:,0])/np.sum(shtable[:,1])})
         wandb.log({"steps": 0})
 
     steps = 0
     for epoch in tqdm(range(EPOCHS), desc="Epochs"):
         for sentence, probe_target in tqdm(train_dataset, desc="Train Samples"):
+            if steps >= training_args.max_steps:
+                break
             sentence, probe_target = sentence.to(device), probe_target.to(device)
             model.zero_grad()
             model_pred = model(sentence.unsqueeze(0)).squeeze(0)
@@ -260,54 +309,69 @@ def main():
             if steps%training_args.logging_steps == 0:
                 # Eval after logging steps
                 logger.info(f"EVAL AFTER STEPS {steps} EPOCH {epoch+1}")
-                val_losses, accuracy_table = evaluate(model, eval_dataset, loss_fn, device)
+                val_losses, hhtable, shtable = evaluate(model, eval_dataset, loss_fn, device)
 
                 EPOCH_METRICS["val_losses"].append(np.mean(val_losses))
-                EPOCH_METRICS["val_accs"].append(np.sum(accuracy_table[:,0])/np.sum(accuracy_table[:,1]))
+                EPOCH_METRICS["val_acc_hard_hamming"].append(np.sum(hhtable[:,0])/np.sum(hhtable[:,1]))
+                EPOCH_METRICS["val_acc_soft_hamming"].append(np.sum(shtable[:,0])/np.sum(shtable[:,1]))
                 logger.info(f"Steps: {steps}\n")
                 logger.info(f"Epoch: {epoch+1}/{EPOCHS}\n")
                 logger.info(f"Val Loss: {EPOCH_METRICS['val_losses'][-1]}")
-                logger.info(f"Val Accuracy: {EPOCH_METRICS['val_accs'][-1]}")
+                logger.info(f"Val Hard Hamming Accuracy: {EPOCH_METRICS['val_acc_hard_hamming'][-1]}")
+                logger.info(f"Val Soft Hamming Accuracy: {EPOCH_METRICS['val_acc_soft_hamming'][-1]}")
                 if model_args.wandb:
                     wandb.log({"val_loss": EPOCH_METRICS['val_losses'][-1]})
-                    wandb.log({"val_acc": EPOCH_METRICS['val_accs'][-1]})
-                    wandb.log({"steps": steps})
+                    wandb.log({"val_acc_hard_hamming": EPOCH_METRICS["val_acc_hard_hamming"][-1]})
+                    wandb.log({"val_acc_soft_hamming": EPOCH_METRICS["val_acc_soft_hamming"][-1]})
+                    wandb.log({"steps": steps})                
 
     # Eval at end
-    logger.info(f"EVAL AFTER STEPS {steps} EPOCH {epoch+1}")
-    val_losses, accuracy_table = evaluate(model, eval_dataset, loss_fn, device)
+    logger.info(f"EVAL AT END")
+    val_losses, hhtable, shtable = evaluate(model, eval_dataset, loss_fn, device)
     
     EPOCH_METRICS["val_losses"].append(np.mean(val_losses))
-    EPOCH_METRICS["val_accs"].append(np.sum(accuracy_table[:,0])/np.sum(accuracy_table[:,1]))
+    EPOCH_METRICS["val_acc_hard_hamming"].append(np.sum(hhtable[:,0])/np.sum(hhtable[:,1]))
+    EPOCH_METRICS["val_acc_soft_hamming"].append(np.sum(shtable[:,0])/np.sum(shtable[:,1]))
     logger.info(f"Steps: {steps}\n")
-    logger.info(f"Epoch: {epoch+1}/{EPOCHS}\n")
     logger.info(f"Val Loss: {EPOCH_METRICS['val_losses'][-1]}")
-    logger.info(f"Val Accuracy: {EPOCH_METRICS['val_accs'][-1]}")
+    logger.info(f"Val Hard Hamming Accuracy: {EPOCH_METRICS['val_acc_hard_hamming'][-1]}")
+    logger.info(f"Val Soft Hamming Accuracy: {EPOCH_METRICS['val_acc_soft_hamming'][-1]}")
     if model_args.wandb:
         wandb.log({"val_loss": EPOCH_METRICS['val_losses'][-1]})
-        wandb.log({"val_acc": EPOCH_METRICS['val_accs'][-1]})
+        wandb.log({"val_acc_hard_hamming": EPOCH_METRICS['val_acc_hard_hamming'][-1]})
+        wandb.log({"val_acc_soft_hamming": EPOCH_METRICS['val_acc_soft_hamming'][-1]})
         wandb.log({"steps": steps})
 
     logger.info(f"SAVING FINAL MODEL TO: {training_args.output_dir + '/state_dict.pt'}")
     torch.save(model.state_dict(), training_args.output_dir + '/state_dict.pt')
     logger.info(f"EPOCH METRICS: val_losses: {EPOCH_METRICS['val_losses']}")
-    logger.info(f"EPOCH METRICS: val_accs: {EPOCH_METRICS['val_accs']}")
+    logger.info(f"EPOCH METRICS: val_acc_hard_hamming: {EPOCH_METRICS['val_acc_hard_hamming']}")
+    logger.info(f"EPOCH METRICS: val_acc_soft_hamming: {EPOCH_METRICS['val_acc_soft_hamming']}")
     print("EPOCH METRICS: ", EPOCH_METRICS)
+    with open(training_args.output_dir + '/metrics.json', 'w+') as mfp:
+        mfp.write(json.dumps(EPOCH_METRICS))
 
 
 def evaluate(model, eval_dataset, loss_fn, device):
     model.eval()
     val_losses = []
-    accuracy_table = np.zeros((len(eval_dataset), 2)) # number of predicted correctly, total tokens in each sentence
+    # number of predicted correctly, total tokens in each sentence : Hard Hamming Distance
+    hard_hamming_table = np.zeros((len(eval_dataset), 2))
+    # number of probabilistically correct, total tokens in each sentence: Soft Hamming Distance
+    soft_hamming_table = np.zeros((len(eval_dataset), 2)) 
     for idx, (sent, target) in tqdm(enumerate(eval_dataset), desc="Evaluation Samples"):
         sent, target = sent.to(device), target.to(device)
         model_pred = model(sent.unsqueeze(0)).squeeze(0)
+        # These are the log probabilities returned by the model
 
         val_losses += [loss_fn(model_pred, target).item()]
-        accuracy_table[idx][0] = torch.sum(torch.argmax(model_pred, dim=-1)==target)
-        accuracy_table[idx][1] = target.shape[-1]
+        hard_hamming_table[idx][0] = torch.sum(torch.argmax(model_pred, dim=-1)==target)
+        hard_hamming_table[idx][1] = target.shape[-1]
+
+        soft_hamming_table[idx][0] = torch.sum(torch.exp(model_pred[torch.arange(target.shape[-1]), target]))
+        soft_hamming_table[idx][1] = target.shape[-1]
     model.train()
-    return val_losses, accuracy_table
+    return val_losses, hard_hamming_table, soft_hamming_table
 
 
 if __name__ == "__main__":

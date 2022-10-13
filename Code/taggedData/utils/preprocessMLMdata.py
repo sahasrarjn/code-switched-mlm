@@ -88,27 +88,30 @@ def processDataset(source_file, engSum, count, numSwitch, maskRatio):
 			check = list(set(tokenLangs))
 			if 'OTHER' in check: 
 				check.remove('OTHER')
-			if  len(check) > 1: 
-				engSum = engSum + tokenLangs.count('EN')/len(tokenLangs)
-				count = count + 1
-				numSwitch = numSwitch + (len([x[0] for x in groupby(tokenLangs)]) -1)/len(words)
-				if args.mask_type == "around-switch":
-					tokenMasks = implement_mask(words, langs, tokenMap)
-				else:
-					tokenMasks = implement_mask(tokenLangs)
-				assert len(tokenMasks) == len(tokens), "Mask length doesnot match length of tokens"
-				sentence = " ".join(words)
-				sentence_tokenized = tokenizer.tokenize(sentence)
-				assert len(tokens) == len(sentence_tokenized), "Mismatch in lengths of sentence and combined word-level tokens"
-				#if tokens != sentence_tokenized:
-					#print("{}, {}".format(tokens, sentence_tokenized))
-					#pdb.set_trace()
-				labelSent = ' '.join(tokenMasks)
-				maskRatio = maskRatio + tokenMasks.count('MASK')/len(tokenMasks)
-				if args.debug:
-					pass
-				else:
-					g.write('{}\t{}\n'.format(sentence, labelSent))
+			
+			if args.mask_type == "around-switch" and len(check) <= 1: continue
+			
+			engSum = engSum + tokenLangs.count('EN')/len(tokenLangs)
+			count = count + 1
+			numSwitch = numSwitch + (len([x[0] for x in groupby(tokenLangs)]) -1)/len(words)
+			if args.mask_type == "around-switch":
+				tokenMasks = implement_mask(words, langs, tokenMap)
+			else:
+				tokenMasks = implement_mask(tokenLangs)
+			assert len(tokenMasks) == len(tokens), "Mask length doesnot match length of tokens"
+			sentence = " ".join(words)
+			sentence_tokenized = tokenizer.tokenize(sentence)
+			assert len(tokens) == len(sentence_tokenized), "Mismatch in lengths of sentence and combined word-level tokens"
+			#if tokens != sentence_tokenized:
+				#print("{}, {}".format(tokens, sentence_tokenized))
+				#pdb.set_trace()
+			labelSent = ' '.join(tokenMasks)
+			maskRatio = maskRatio + tokenMasks.count('MASK')/len(tokenMasks)
+			if args.debug:
+				pass
+			else:
+				g.write('{}\t{}\n'.format(sentence, labelSent))
+			
 			words, langs, tokens, tokenLangs = [],[],[],[]
 			tokenMap = {}
 			continue
@@ -155,4 +158,4 @@ for file in files:
 if not args.debug: g.close()
 
 
-print("For {} sentences, average fraction of english tokens is {}, and average number of switch points are {}. The average mask ratio is {}".format(count, np.round(engSum/count, 2), np.round(numSwitch/count,2), np.round(maskRatio/count,2)))
+# print("For {} sentences, average fraction of english tokens is {}, and average number of switch points are {}. The average mask ratio is {}".format(count, np.round(engSum/count, 2), np.round(numSwitch/count,2), np.round(maskRatio/count,2)))

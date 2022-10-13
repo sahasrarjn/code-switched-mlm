@@ -32,17 +32,7 @@ class Preprocess:
         self.show_vocab(self.vocab1, 'out/vocab_EN.txt', 'out/vocab_EN.png')
         self.show_vocab(self.vocab2, 'out/vocab_HI.txt', 'out/vocab_HI.png')
         
-    # def get_wms_data(self, datadir):
-    #     for datafile in os.listdir(datadir):
-    #         datafile = os.path.join(datadir, datafile)
-    #         assert(os.path.isfile(datafile))
-    #         with open(datafile) as f:
-    #             json_data = json.load(f)
-    #             for data in json_data['text']:
-    #                 print(data)
-    #                 exit(0)
-                
-
+    
     def get_unigram(self, datafile):
         vocab = defaultdict(float)
         totalCount = 0

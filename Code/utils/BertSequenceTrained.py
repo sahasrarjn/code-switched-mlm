@@ -19,7 +19,6 @@ from sklearn.metrics import f1_score, precision_score, recall_score
 
 
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -51,7 +50,7 @@ def acc_and_f1(preds, labels):
 def read_examples_from_file(data_dir, mode):
     file_path = os.path.join(data_dir, "{}.txt".format(mode))
     examples = []
-    with open(file_path, 'r') as infile:
+    with open(file_path, 'r', errors='ignore') as infile:
         lines = infile.read().strip().split('\n')
     for line in lines:
         x = line.split('\t')
@@ -76,7 +75,6 @@ def convert_examples_to_features(examples,
                                  max_seq_length=128):
 
     label_map = {label: i for i, label in enumerate(label_list)}
-    print(label_map)
     features = []
 
     for (ex_index, example) in enumerate(examples):
@@ -101,10 +99,10 @@ def convert_examples_to_features(examples,
 def get_labels(data_dir):
     # return ['0','1','2']
     # return ['0.0','1.0','2.0']
-    return ['negative','positive','neutral']
+    # return ['negative','positive','neutral']
     all_path = os.path.join(data_dir, "all.txt")
     labels = []
-    with open(all_path, "r") as infile:
+    with open(all_path, "r", errors='ignore') as infile:
         lines = infile.read().strip().split('\n')
 
     for line in lines:
@@ -159,6 +157,7 @@ def train(args, train_dataset, valid_dataset, model, tokenizer, labels):
         t_loss = 0
         t_steps = 0
         for step, batch in enumerate(epoch_iterator):
+            # print("Step: ", step)
             model.train()
             batch = tuple(t.to(args.device) for t in batch)
             inputs = {'input_ids': batch[0],
@@ -178,6 +177,7 @@ def train(args, train_dataset, valid_dataset, model, tokenizer, labels):
                 scheduler.step()  # Update learning rate schedule
                 model.zero_grad()
                 global_step += 1
+                # print("Global step:", global_step, step)
                 if (global_step%args.logging_steps==0) :
                     results, _ = evaluate(args, model, tokenizer, labels, 'validation')
                     if results.get('f1') > best_f1_score and args.save_steps > 0:
@@ -188,9 +188,12 @@ def train(args, train_dataset, valid_dataset, model, tokenizer, labels):
                         tokenizer.save_pretrained(args.output_dir)
                         torch.save(args, os.path.join(
                             args.output_dir, "training_args.bin"))
+                        print(f"Model saved to {args.output_dir}")
                         try:
                             preds = evaluate(args, model, tokenizer, labels, mode="test")
                             all_tests.append((results.get('f1'),preds))
+                            if args.wandb: 
+                                wandb.log({'all_tests_f1': results.get('f1')})
                         except Exception as e:
                             print(e)
                     elif results.get('f1') > best_f1_score and args.save_steps == 0:
@@ -199,13 +202,16 @@ def train(args, train_dataset, valid_dataset, model, tokenizer, labels):
                         try:
                             preds = evaluate(args, model, tokenizer, labels, mode="test")
                             all_tests.append((results.get('f1'),preds))
+                            if args.wandb: 
+                                wandb.log({'all_tests_f1': results.get('f1')})
                         except Exception as e:
                             print(e)
                     else:
                         logger.info("  Best F1 still at = %s", str(best_f1_score))
 
-                    wandb.log({'f1': results.get('f1')*100})
-                    wandb.log({'best_f1': best_f1_score*100})
+                    if args.wandb:
+                        wandb.log({'f1': results.get('f1')*100})
+                        wandb.log({'best_f1': best_f1_score*100})
                         
                     # if results.get('f1') > best_f1_score:
                     #     best_f1_score = results.get('f1')
@@ -232,11 +238,15 @@ def train(args, train_dataset, valid_dataset, model, tokenizer, labels):
         logger.info("Validation loss = %s", str(eval_loss))
         train_losses.append(t_loss)
         val_losses.append(eval_loss)
+        if args.wandb:
+            wandb.log({'train_loss': t_loss})
+            wandb.log({'val_loss': eval_loss})
             
-        #if results.get('f1') > best_f1_score :
         try:
             preds = evaluate(args, model, tokenizer, labels, mode="test")
             all_tests.append((results.get('f1'),preds))
+            if args.wandb: 
+                wandb.log({'all_tests_f1': results.get('f1')})
         except Exception as e:
             print(e)
         epnum+=1
@@ -487,7 +497,6 @@ def main():
     # Prepare data
     labels = get_labels(args.data_dir)
     num_labels = len(labels) # 0 for negative 1 for positive 2 for neutral
-    print(num_labels)
     # Initialize model
     tokenizer_class = {"xlm": XLMTokenizer, "bert": BertTokenizer, "xlm-roberta": XLMRobertaTokenizer}
     config_class = {"xlm": XLMConfig, "bert": BertConfig, "xlm-roberta": XLMRobertaConfig}
@@ -512,8 +521,6 @@ def main():
         # 'ArchikiCombinedMLM-All-bert/checkpoint-18000/pytorch_model.bin',
         config=config)
     print("model loaded")
-
-
     model.to(args.device)
 
     # Training
@@ -533,14 +540,24 @@ def main():
 
     results = {}
 
+    print("Loading best model for evaluation")
+    config=config_class[args.model_type].from_pretrained(
+        args.output_dir+'/config.json',
+        num_labels=num_labels)
+    model = model_class[args.model_type].from_pretrained(
+        args.output_dir+'/pytorch_model.bin',
+        config=config)
+    print("model loaded")
+    model.to(args.device)
+
     result, _ = evaluate(args, model, tokenizer, labels, mode="validation")
+    best_acc = result.get('f1')
     if args.do_pred:
         best_acc = result.get('f1')
         res = evaluate(args, model, tokenizer, labels, mode="test")
         if not os.path.exists(args.output_dir):
             os.makedirs(args.output_dir)
         if res is not None:
-            print('kkkkk')
             output_test_predictions_file = os.path.join(args.output_dir,args.save_file_start.replace('_','-')+"_" + str(best_acc)[:5]+"_seed_"+str(args.seed)+"_ep_"+str(args.num_train_epochs)+".txt")
             print(output_test_predictions_file)
             with open(output_test_predictions_file, "w+") as writer:
