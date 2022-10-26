@@ -8,9 +8,9 @@ from collections import defaultdict
 import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-i', '--input_file', type=str, default='../data/Samanantar/en-ml/train.ml.romanized', help='Sentences data file')
-parser.add_argument('-o', '--output_file', type=str, default='../vocab/vocab_ML.txt', help='Output vocab frequency file')
-parser.add_argument('-p', '--output_plotfile', type=str, default='../vocab/vocab_ML.png', help='Output vocab frequency plot file')
+parser.add_argument('-i', '--input_file', type=str, default='../data/Samanantar/en-ta/train.ta.romanized', help='Sentences data file')
+parser.add_argument('-o', '--output_file', type=str, default='../vocab/vocab_TA.txt', help='Output vocab frequency file')
+parser.add_argument('-p', '--output_plotfile', type=str, default='../vocab/vocab_TA.png', help='Output vocab frequency plot file')
 args = parser.parse_args()
 
 

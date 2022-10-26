@@ -18,6 +18,10 @@ from transformers import (
 from sklearn.metrics import f1_score, precision_score, recall_score
 
 
+from transformers import (
+    CONFIG_MAPPING
+)
+
 
 logger = logging.getLogger(__name__)
 
@@ -456,7 +460,7 @@ def main():
         default=None,
         type=str,
         required=False,
-        help="The file to write fi values.",
+        help="Pretrained model location.",
     )
     parser.add_argument(
         "--save_file_start",

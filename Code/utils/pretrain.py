@@ -53,6 +53,8 @@ from customlibs.custom_language_modeling_multifile_amb import LineByLineTextData
 from customlibs.custom_data_collator_multifile import DataCollatorForLanguageModeling
 from customlibs.custom_language_modeling_multifile import LineByLineTextDataset, TextDataset
 
+# Residual Connections in Bert
+from customlibs.residual_bert import ResidualBertForMaskedLM
 
 
 logger = logging.getLogger(__name__)
@@ -78,6 +80,10 @@ class ModelArguments:
         default=None,
         metadata={"help": "If training from scratch, pass a model type from the list: " + ", ".join(MODEL_TYPES)},
     )
+    # residual_bert: Optional[bool] = field(
+    #     default=False,
+    #     metadata={"help": "Option to use ResidualBert or not"},
+    # )
     config_name: Optional[str] = field(
         default=None, metadata={"help": "Pretrained config name or path if not the same as model_name"}
     )
@@ -174,10 +180,6 @@ def get_dataset(
 
 
 def main():
-    # See all possible arguments in src/transformers/training_args.py
-    # or by passing the --help flag to this script.
-    # We now keep distinct sets of args, for a cleaner separation of concerns.
-
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
 
@@ -219,11 +221,17 @@ def main():
     set_seed(training_args.seed)
 
     # Load pretrained model and tokenizer
-    #
+
     # Distributed training:
     # The .from_pretrained methods guarantee that only one local process can concurrently
     # download model & vocab.
 
+    # if model_args.config_name:
+    #     config = AutoConfig.from_pretrained(model_args.config_name, cache_dir=model_args.cache_dir,
+    #                                         output_hidden_states=model_args.residual_bert)
+    # elif model_args.model_name_or_path:
+    #     config = AutoConfig.from_pretrained(model_args.model_name_or_path, cache_dir=model_args.cache_dir,
+    #                                         output_hidden_states=model_args.residual_bert)
     if model_args.config_name:
         config = AutoConfig.from_pretrained(model_args.config_name, cache_dir=model_args.cache_dir)
     elif model_args.model_name_or_path:
@@ -231,7 +239,6 @@ def main():
     else:
         config = CONFIG_MAPPING[model_args.model_type]()
         logger.warning("You are instantiating a new config instance from scratch.")
-    # config=AutoConfig.from_pretrained('./dakshina_10epochs/config.json')
 
     if model_args.tokenizer_name:
         tokenizer = AutoTokenizer.from_pretrained(model_args.tokenizer_name, cache_dir=model_args.cache_dir)
@@ -244,7 +251,10 @@ def main():
         )
 
     if model_args.model_name_or_path:
-        model = AutoModelWithLMHead.from_pretrained(
+        model_class = AutoModelWithLMHead
+        # if model_args.residual_bert:
+        #     model_class = ResidualBertForMaskedLM
+        model = model_class.from_pretrained(
             model_args.model_name_or_path,
             from_tf=bool(".ckpt" in model_args.model_name_or_path),
             config=config,
@@ -263,13 +273,12 @@ def main():
         )
 
     if data_args.block_size <= 0:
-        data_args.block_size = tokenizer.max_len
         # Our input block size will be the max possible for the model
+        data_args.block_size = tokenizer.max_len
     else:
         data_args.block_size = min(data_args.block_size, tokenizer.max_len)
 
     # Get datasets
-
     train_dataset = (
         get_dataset(data_args, tokenizer=tokenizer, cache_dir=model_args.cache_dir) if training_args.do_train else None
     )
@@ -278,6 +287,7 @@ def main():
         if training_args.do_eval
         else None
     )
+
     if config.model_type == "xlnet":
         data_collator = DataCollatorForPermutationLanguageModeling(
             tokenizer=tokenizer,
@@ -312,7 +322,6 @@ def main():
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         prediction_loss_only=True,
-        # do_predict= True, 
     )
 
     # Training

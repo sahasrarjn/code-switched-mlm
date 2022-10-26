@@ -17,24 +17,24 @@
 """ Finetuning the library models for question-answering on SQuAD (DistilBERT, Bert, XLM, XLNet)."""
 
 
-import argparse
-import logging
 import os
+import wandb
 import random
 import timeit
-import wandb
-
+import logging
+import argparse
 import numpy as np
-import torch
-from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
-from torch.utils.data.distributed import DistributedSampler
 from tqdm import tqdm, trange
+
+import torch
+from torch.utils.data.distributed import DistributedSampler
+from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 
 from transformers import (
     AdamW,
     BertConfig,
-    BertForQuestionAnswering,
     BertTokenizer,
+    BertForQuestionAnswering,
     XLMConfig, XLMForQuestionAnswering, XLMTokenizer,
     XLMRobertaConfig, RobertaForQuestionAnswering, XLMRobertaTokenizer,
     get_linear_schedule_with_warmup,
@@ -46,6 +46,7 @@ from transformers.data.metrics.squad_metrics import (
 )
 from transformers.data.processors.squad import SquadResult, SquadV1Processor, SquadV2Processor
 
+from customlibs.residual_bert import ResidualBertForQuestionAnswering
 
 class XLMRobertaForQuestionAnswering(RobertaForQuestionAnswering):
     config_class = XLMRobertaConfig
@@ -60,6 +61,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 MODEL_CLASSES = {
+    "residual-bert": (BertConfig, ResidualBertForQuestionAnswering, BertTokenizer),
     "bert": (BertConfig, BertForQuestionAnswering, BertTokenizer),
     "xlm": (XLMConfig, XLMForQuestionAnswering, XLMTokenizer),
     "xlm-roberta": (XLMRobertaConfig, XLMRobertaForQuestionAnswering, XLMRobertaTokenizer),
@@ -314,7 +316,7 @@ def evaluate(args, model, tokenizer, prefix=""):
                 )
 
             else:
-                start_logits, end_logits = output
+                start_logits, end_logits, _ = output
                 result = SquadResult(unique_id, start_logits, end_logits)
 
             all_results.append(result)
@@ -698,11 +700,10 @@ def main():
     )
     model = model_class.from_pretrained(
         './'+args.model_loc+'/pytorch_model.bin',
-        # './ArchikiCombinedMLM-english-bert/pytorch_model.bin',
-        #from_tf=bool(".ckpt" in args.model_name_or_path),
         config=config,
         cache_dir=args.cache_dir if args.cache_dir else None,
     )
+    print(type(model))
 
     if args.local_rank == 0:
         # Make sure only the first process in distributed training will download model & vocab

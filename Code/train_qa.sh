@@ -22,20 +22,16 @@ MAX_SEQ=256
 
 wandb login 98d0804992a30ee86b8971c931bffcfeff2d5640
 
-# pretrainModel='en_hi_freq_AMB_r2'
-pretrainModel='en_hi_switch_inverted_sanity'
+language='Hindi'
+pretrainModel='en_hi_switch_inverted_residbert'
 
-# for seed in 32
-# for seed in 32 42 52 62 72
-# for seed in 82 92 102 112 122
-for seed in 103 113 123
+for seed in 32 42 52 62 72 82 92 102 112 122
 	do
 	echo "SEED: $seed"
-	# for ep in 40
 	for ep in 20 30 40
     do
 		echo "EPOCHS: $ep"
-		for mod in "PretrainedModels/${pretrainModel}/checkpoint-*"
+		for mod in "PretrainedModels/${language}/${pretrainModel}/checkpoint-*"
 		do
 		echo $mod
 		python3.6 $PWD/Code/utils/run_squad_vanilla.py \

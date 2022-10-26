@@ -89,6 +89,8 @@ def processDataset(source_file, engSum, count, numSwitch, maskRatio):
 			if 'OTHER' in check: 
 				check.remove('OTHER')
 			
+			if len(check) == 0: continue
+			
 			if args.mask_type == "around-switch" and len(check) <= 1: continue
 			
 			engSum = engSum + tokenLangs.count('EN')/len(tokenLangs)

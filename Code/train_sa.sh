@@ -1,7 +1,7 @@
 # Copyright (c) Microsoft Corporation. Licensed under the MIT license.
 
 REPO=$PWD
-LANG=${1:-ML}
+LANG=$1
 TASK=${2:-Sentiment_EN_HI/Romanized}
 MODEL=${3:-bert-base-multilingual-cased}
 MODEL_TYPE=${4:-bert}
@@ -17,13 +17,13 @@ MAX_SEQ=256
 if [ $LANG == "HI" ] 
 then
 	TASK="Sentiment_EN_HI/Romanized"
-	pretrainedModel='en_hi_switch_inverted'
+	pretrainedModel='en_hi_freq'
 	DATA_SUB_DIR="SemEval_3way"
 	mod="PretrainedModels/Hindi/${pretrainedModel}/final_model"
 elif [ $LANG == "ES" ] 
 then
 	TASK="Sentiment_EN_ES"
-	pretrainedModel='en_es_baseline'
+	pretrainedModel='en_es_freq'
 	DATA_SUB_DIR=""
 	mod="PretrainedModels/Spanish/${pretrainedModel}/final_model"
 elif [ $LANG == "ML" ] 
@@ -35,7 +35,7 @@ then
 elif [ $LANG == "TA" ] 
 then
 	TASK="Sentiment_EN_TM"
-	pretrainedModel='en_ta_freq'
+	pretrainedModel='en_ta_sa_freq'
 	DATA_SUB_DIR=""
 	mod="PretrainedModels/Tamil/${pretrainedModel}/final_model"
 else
@@ -58,8 +58,7 @@ OUTPUT_DIR_FINE="${pretrainedModel}"
 echo $TASK, $mod
 
 #for sst use 350 steps, for semeval use 100 steps, for ml finetue use 40
-# for seed in  32 42 52 62 72 82
-for seed in 32 52 62 72 82
+for seed in  32 42 52 62 72 82
 do
 	for epochs in 10
 	do

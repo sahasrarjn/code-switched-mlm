@@ -5,7 +5,7 @@ from tqdm import tqdm
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-s', '--source', type=str, default='../../../Data/Processed_Data/Sentiment_EN_HI/Romanized/SemEval_3way/all.txt', help='Source file')
-parser.add_argument('-t', '--target', type=str, default='../../taggedData/Hindi/en_hi_sa_fine_baseline.txt', help='Target file')
+parser.add_argument('-t', '--target', type=str, default='data/sa.txt', help='Target file')
 args = parser.parse_args()
 
 

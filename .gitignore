@@ -1,5 +1,6 @@
 PretrainedModels
 Data
+!Data/MLM/scripts/*
 logs
 Code/taggedData/*.txt
 Results
