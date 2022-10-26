@@ -1,8 +1,5 @@
 PretrainedModels
-Data
-!Data/MLM/scripts/*
 logs
-Code/taggedData/*.txt
 Results
 oldCode
 *__pycache__*
