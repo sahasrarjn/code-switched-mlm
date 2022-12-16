@@ -1,3 +1,5 @@
+# Use the pretrained model from l3cube-pune/hing-mbert for SA task
+
 # Copyright (c) Microsoft Corporation. Licensed under the MIT license.
 
 import os
@@ -10,23 +12,17 @@ import numpy as np
 from tqdm import tqdm, trange
 
 from transformers import (
+    AutoConfig,
+    AutoTokenizer,
+    AutoModelForSequenceClassification,
     BertConfig,
     BertTokenizer,
     BertForSequenceClassification,
-    XLMConfig,
-    XLMTokenizer,
-    XLMForSequenceClassification,
-    XLMRobertaConfig,
-    XLMRobertaTokenizer,
-    XLMRobertaForSequenceClassification,
     AdamW,
     get_linear_schedule_with_warmup,
-    CONFIG_MAPPING
 )
 from sklearn.metrics import f1_score, precision_score, recall_score
 from torch.utils.data import DataLoader, SequentialSampler, RandomSampler, Dataset
-
-from customlibs.residual_bert import ResidualBertForSequenceClassification
 
 logger = logging.getLogger(__name__)
 
@@ -222,13 +218,6 @@ def train(args, train_dataset, valid_dataset, model, tokenizer, labels):
                         wandb.log({'f1': results.get('f1')*100})
                         wandb.log({'best_f1': best_f1_score*100})
                         
-                    # if results.get('f1') > best_f1_score:
-                    #     best_f1_score = results.get('f1')
-                    #     preds = evaluate(args, model, tokenizer, labels, mode="test")
-                    #     # Saving predictions
-                    #     output_test_predictions_file = os.path.join(args.output_dir, "test_predictions_"+str(best_f1_score)+"_.txt")
-                    #     with open(output_test_predictions_file, "w") as writer:
-                    #         writer.write('\n'.join(preds))
         t_loss = t_loss/t_steps
         logger.info("Training loss = %s", str(t_loss))
         results, eval_loss = evaluate(args, model, tokenizer, labels, 'validation')
@@ -260,11 +249,6 @@ def train(args, train_dataset, valid_dataset, model, tokenizer, labels):
             print(e)
         epnum+=1
 
-            # Saving predictions
-            # output_test_predictions_file = os.path.join(args.output_dir, "test_predictions_"+str(best_f1_score)+"_seed_"+str(args.seed)+"epoch_"+str(epnum -1)+".txt")
-            # with open(output_test_predictions_file, "w") as writer:
-            #     writer.write('\n'.join(preds))
-            # tr_loss += loss.item()
     best_acc=0
     res=None
     print(len(all_tests))
@@ -272,8 +256,6 @@ def train(args, train_dataset, valid_dataset, model, tokenizer, labels):
         if i[0]>best_acc:
             best_acc=i[0]
             res=i[1]
-    # fn=args.model_loc.split('/')[0]
-    # fn=fn[15:]
     if res is not None:
         output_test_predictions_file = os.path.join(args.output_dir,args.save_file_start.replace('_','-')+"_" + str(best_acc)[:5]+"_seed_"+str(args.seed)+"_ep_"+str(args.num_train_epochs)+".txt")
         print(output_test_predictions_file)
@@ -284,20 +266,6 @@ def train(args, train_dataset, valid_dataset, model, tokenizer, labels):
     print("Val losses:", val_losses)
     print(epnum)
     
-    # with open('to_plot2.pkl', 'wb') as f:
-    #     pickle.dump([train_losses, val_losses, list(range(epnum))], f)
-    # tr_loss += loss.item()
-            # optimizer.step()
-            # scheduler.step()
-            # model.zero_grad()
-            # global_step += 1
-
-               
-
-        # results = evaluate(args, model, tokenizer, labels, 'validation')
-
-        
-
     return global_step, tr_loss / global_step
 
 
@@ -506,48 +474,22 @@ def main():
     # Prepare data
     labels = get_labels(args.data_dir)
     num_labels = len(labels) # 0 for negative 1 for positive 2 for neutral
-    # Initialize model
-    tokenizer_class = {"xlm": XLMTokenizer, "bert": BertTokenizer, "xlm-roberta": XLMRobertaTokenizer, "residual-bert": BertTokenizer}
-    config_class = {"xlm": XLMConfig, "bert": BertConfig, "xlm-roberta": XLMRobertaConfig, "residual-bert": BertConfig}
-    model_class = {"xlm": XLMForSequenceClassification, "bert": BertForSequenceClassification, "xlm-roberta": XLMRobertaForSequenceClassification, "residual-bert": ResidualBertForSequenceClassification}
 
-    if args.model_type.startswith('residual-bert'):
-        parselist = args.model_type.split('_')
-        assert len(parselist) == 3
-        args.model_type = parselist[0]
-        res_layer = int(parselist[1])
-        res_dropout = float(parselist[2])
+    tokenizer = AutoTokenizer.from_pretrained("/home/sahasra/hing-mbert", do_lower_case=True)
 
-    if args.model_type not in tokenizer_class.keys():
-        print("Model type has to be xlm/xlm-roberta/bert/residual-bert")
-        exit(0)
-    tokenizer = tokenizer_class[args.model_type].from_pretrained(args.model_name, do_lower_case=True)
-
-    config=config_class[args.model_type].from_pretrained(
-        # args.model_name,
-        # 'ArchikiCombinedMLM-All-bert/checkpoint-18000/config.json',
-        args.model_loc+'/config.json' if args.model_loc else args.model_name,
-        output_hidden_states=True,
+    config = AutoConfig.from_pretrained(
+        "/home/sahasra/hing-mbert",
         num_labels=num_labels)
-        # config=config_class[args.model_type].from_pretrained(args.model_name,num_labels=num_labels)
     print("config loaded")
 
-    if args.model_type == 'residual-bert':
-        model = model_class[args.model_type].from_pretrained(
-            args.model_loc+'/pytorch_model.bin' if args.model_loc else args.model_name,
-            config=config,
-            res_layer=res_layer,
-            res_dropout=res_dropout
-        )
-    else:
-        model = model_class[args.model_type].from_pretrained(
-            # args.model_name, 
-            # num_labels=num_labels
-            args.model_loc+'/pytorch_model.bin' if args.model_loc else args.model_name,
-            # 'ArchikiCombinedMLM-All-bert/checkpoint-18000/pytorch_model.bin',
-            config=config
-        )
+    model = AutoModelForSequenceClassification.from_pretrained(
+        "/home/sahasra/hing-mbert",
+        config=config
+    )
     print("model loaded")
+
+    print(type(config))
+    print(type(model))
 
     model.to(args.device)
 
@@ -569,20 +511,12 @@ def main():
     results = {}
 
     print("Loading best model for evaluation")
-    config=config_class[args.model_type].from_pretrained(
-        args.output_dir+'/config.json',
+    config = AutoConfig.from_pretrained(
+        args.output_dir,
         num_labels=num_labels)
-    if args.model_type == "residual-bert":
-        model = model_class[args.model_type].from_pretrained(
-            args.output_dir+'/pytorch_model.bin',
-            config=config,
-            res_layer=res_layer,
-            res_dropout=res_dropout
-        )
-    else:
-        model = model_class[args.model_type].from_pretrained(
-            args.output_dir+'/pytorch_model.bin',
-            config=config)
+    model = AutoModelForSequenceClassification.from_pretrained(
+        args.output_dir,
+        config=config)
     print("model loaded")
     model.to(args.device)
 
@@ -598,13 +532,6 @@ def main():
             print(output_test_predictions_file)
             with open(output_test_predictions_file, "w+") as writer:
                 writer.write('\n'.join(res))
-    # preds = evaluate(args, model, tokenizer, labels, mode="test")
-
-    # # Saving predictions
-    # output_test_predictions_file = os.path.join(args.output_dir, "test_predictions.txt")
-    # with open(output_test_predictions_file, "w") as writer:
-    #     writer.write('\n'.join(preds))
-
     return results
 
 

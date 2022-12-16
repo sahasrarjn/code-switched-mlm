@@ -80,10 +80,18 @@ class ModelArguments:
         default=None,
         metadata={"help": "If training from scratch, pass a model type from the list: " + ", ".join(MODEL_TYPES)},
     )
-    # residual_bert: Optional[bool] = field(
-    #     default=False,
-    #     metadata={"help": "Option to use ResidualBert or not"},
-    # )
+    residual_bert: bool = field(
+        default=False,
+        metadata={"help": "Option to use ResidualBert or not"},
+    )
+    res_layer: int = field(
+        default=2,
+        metadata={"help": "Input layer for the residual connection"},
+    )
+    res_dropout: float = field(
+        default=0.2,
+        metadata={"help": "Dropout for regularizing the residual connection"},
+    )
     config_name: Optional[str] = field(
         default=None, metadata={"help": "Pretrained config name or path if not the same as model_name"}
     )
@@ -226,16 +234,12 @@ def main():
     # The .from_pretrained methods guarantee that only one local process can concurrently
     # download model & vocab.
 
-    # if model_args.config_name:
-    #     config = AutoConfig.from_pretrained(model_args.config_name, cache_dir=model_args.cache_dir,
-    #                                         output_hidden_states=model_args.residual_bert)
-    # elif model_args.model_name_or_path:
-    #     config = AutoConfig.from_pretrained(model_args.model_name_or_path, cache_dir=model_args.cache_dir,
-    #                                         output_hidden_states=model_args.residual_bert)
     if model_args.config_name:
-        config = AutoConfig.from_pretrained(model_args.config_name, cache_dir=model_args.cache_dir)
+        config = AutoConfig.from_pretrained(model_args.config_name, cache_dir=model_args.cache_dir,
+                                            output_hidden_states=model_args.residual_bert)
     elif model_args.model_name_or_path:
-        config = AutoConfig.from_pretrained(model_args.model_name_or_path, cache_dir=model_args.cache_dir)
+        config = AutoConfig.from_pretrained(model_args.model_name_or_path, cache_dir=model_args.cache_dir,
+                                            output_hidden_states=model_args.residual_bert)
     else:
         config = CONFIG_MAPPING[model_args.model_type]()
         logger.warning("You are instantiating a new config instance from scratch.")
@@ -251,15 +255,22 @@ def main():
         )
 
     if model_args.model_name_or_path:
-        model_class = AutoModelWithLMHead
-        # if model_args.residual_bert:
-        #     model_class = ResidualBertForMaskedLM
-        model = model_class.from_pretrained(
-            model_args.model_name_or_path,
-            from_tf=bool(".ckpt" in model_args.model_name_or_path),
-            config=config,
-            cache_dir=model_args.cache_dir,
-        )
+        if model_args.residual_bert:
+            model = ResidualBertForMaskedLM.from_pretrained(
+                model_args.model_name_or_path,
+                from_tf=bool(".ckpt" in model_args.model_name_or_path),
+                config=config,
+                res_layer=model_args.res_layer,
+                dropout=model_args.res_dropout,
+                cache_dir=model_args.cache_dir,
+            )
+        else:
+            model = AutoModelWithLMHead.from_pretrained(
+                model_args.model_name_or_path,
+                from_tf=bool(".ckpt" in model_args.model_name_or_path),
+                config=config,
+                cache_dir=model_args.cache_dir,
+            )
     else:
         logger.info("Training new model from scratch")
         model = AutoModelWithLMHead.from_config(config)

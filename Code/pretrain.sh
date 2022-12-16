@@ -4,13 +4,15 @@ REPO=$PWD
 TASK=${1:-NLI_EN_HI}
 MODEL=${2:-bert-base-multilingual-cased}
 MODEL_TYPE=${3:-bert}
+# MODEL=${2:-xlm-roberta-base}
+# MODEL_TYPE=${3:-roberta}
 OUT_DIR=${4:-$REPO/PretrainedModels/en_hi_switch}
 TRAIN_FILE=${5:-$REPO/Code/taggedData/en_hi_switch_train.txt}
 EVAL_FILE=${6:-$REPO/Code/taggedData/en_hi_switch_eval.txt}
 MLM_PROBABILITY=${7:-0.32}
 
 # export NVIDIA_VISIBLE_DEVICES=2
-export CUDA_VISIBLE_DEVICES=${8:-3}
+export CUDA_VISIBLE_DEVICES=${8:-2}
 export WANDB_DISABLED="true"
 
 EPOCH=4
@@ -25,14 +27,54 @@ function getMLMprob {
     echo $(python3 -c "print( 0.15 * $total_tokens / $mask_cnt)" )
 }
 
-# TODO: use this function to automate
+## L3cube Hindi
+    # Baseline MLM just the 40k labelled ones
+    # OUT_DIR='/home/sahasra/pretraining/PretrainedModels/Hindi/l3cube40k_en_hi_baseline'
+    # TRAIN_FILE='/home/sahasra/pretraining/Code/taggedData/Hindi/l3cube40k_en_hi_baseline_train.txt'
+    # EVAL_FILE='/home/sahasra/pretraining/Code/taggedData/Hindi/l3cube40k_en_hi_baseline_eval.txt'
+    # MLM_PROBABILITY=0.15
 
+    # SwitchMLM just the 40k labelled ones
+    # OUT_DIR='/home/sahasra/pretraining/PretrainedModels/Hindi/l3cube40k_en_hi_switch'
+    # TRAIN_FILE='/home/sahasra/pretraining/Code/taggedData/Hindi/l3cube40k_en_hi_switch_train.txt'
+    # EVAL_FILE='/home/sahasra/pretraining/Code/taggedData/Hindi/l3cube40k_en_hi_switch_eval.txt'
+    # MLM_PROBABILITY=$(getMLMprob /home/sahasra/pretraining/Code/taggedData/Hindi/l3cube40k_en_hi_switch.txt)
+
+    # Baseline MLM 185k unlabelled sentences
+    # OUT_DIR='/home/sahasra/pretraining/PretrainedModels/Hindi/l3cube185k_en_hi_baseline'
+    # TRAIN_FILE='/home/sahasra/pretraining/Code/taggedData/Hindi/l3cube185k_en_hi_baseline_train.txt'
+    # EVAL_FILE='/home/sahasra/pretraining/Code/taggedData/Hindi/l3cube185k_en_hi_baseline_eval.txt'
+    # MLM_PROBABILITY=0.15
+    
+    # FreqMLM 185k unlabelled sentences
+    # OUT_DIR='/home/sahasra/pretraining/PretrainedModels/Hindi/l3cube185k_en_hi_freq'
+    # TRAIN_FILE='/home/sahasra/pretraining/Code/taggedData/Hindi/l3cube185k_en_hi_freq_train.txt'
+    # EVAL_FILE='/home/sahasra/pretraining/Code/taggedData/Hindi/l3cube185k_en_hi_freq_eval.txt'
+    # MLM_PROBABILITY=$(getMLMprob /home/sahasra/pretraining/Code/taggedData/Hindi/l3cube185k_en_hi_freq.txt)
+
+    # BaselineMLM 140k (unlabelled, gluecos tagged) + 44k (labelled)
+    # OUT_DIR='/home/sahasra/pretraining/PretrainedModels/Hindi/l3cube140k44k_en_hi_baseline'
+    # TRAIN_FILE='/home/sahasra/pretraining/Code/taggedData/Hindi/l3cube140k44k_en_hi_baseline_train.txt'
+    # EVAL_FILE='/home/sahasra/pretraining/Code/taggedData/Hindi/l3cube140k44k_en_hi_baseline_eval.txt'
+    # MLM_PROBABILITY=0.15
+
+    # FreqMLM 140k44k
+    # OUT_DIR='/home/sahasra/pretraining/PretrainedModels/Hindi/l3cube140k44k_en_hi_freq'
+    # TRAIN_FILE='/home/sahasra/pretraining/Code/taggedData/Hindi/l3cube140k44k_en_hi_freq_train.txt'
+    # EVAL_FILE='/home/sahasra/pretraining/Code/taggedData/Hindi/l3cube140k44k_en_hi_freq_eval.txt'
+    # MLM_PROBABILITY=$(getMLMprob /home/sahasra/pretraining/Code/taggedData/Hindi/l3cube140k44k_en_hi_freq.txt)
+
+    # SwitchMLM 140k44k
+    # OUT_DIR='/home/sahasra/pretraining/PretrainedModels/Hindi/l3cube140k44k_en_hi_switch'
+    # TRAIN_FILE='/home/sahasra/pretraining/Code/taggedData/Hindi/l3cube140k44k_en_hi_switch_train.txt'
+    # EVAL_FILE='/home/sahasra/pretraining/Code/taggedData/Hindi/l3cube140k44k_en_hi_switch_eval.txt'
+    # MLM_PROBABILITY=$(getMLMprob /home/sahasra/pretraining/Code/taggedData/Hindi/l3cube140k44k_en_hi_switch.txt)
 
 ## Hindi
     # Baseline MLM
-    # OUT_DIR='/home/sahasra/pretraining/PretrainedModels/en_hi_baseline'
-    # TRAIN_FILE='/home/sahasra/pretraining/Code/taggedData/en_hi_baseline_train.txt'
-    # EVAL_FILE='/home/sahasra/pretraining/Code/taggedData/en_hi_baseline_eval.txt'
+    # OUT_DIR='/home/sahasra/pretraining/PretrainedModels/Hindi/en_hi_baseline'
+    # TRAIN_FILE='/home/sahasra/pretraining/Code/taggedData/Hindi/en_hi_baseline_train.txt'
+    # EVAL_FILE='/home/sahasra/pretraining/Code/taggedData/Hindi/en_hi_baseline_eval.txt'
     # MLM_PROBABILITY=0.15
 
     # Standard Switch MLM
@@ -60,7 +102,7 @@ function getMLMprob {
     # MLM_PROBABILITY=0.283
 
     # Experiment: Inverted LID SwitchMLM
-    # OUT_DIR='/home/sahasra/pretraining/PretrainedModels/Hindi/en_hi_switch_inverted_725'
+    # OUT_DIR='/home/sahasra/pretraining/PretrainedModels/Hindi/en_hi_switch_inverted'
     # TRAIN_FILE='/home/sahasra/pretraining/Code/taggedData/Hindi/en_hi_switch_inverted_train.txt'
     # EVAL_FILE='/home/sahasra/pretraining/Code/taggedData/Hindi/en_hi_switch_inverted_eval.txt'
     # MLM_PROBABILITY=0.32
@@ -102,6 +144,12 @@ function getMLMprob {
     # EVAL_FILE='/home/sahasra/pretraining/Code/taggedData/Hindi/en_hi_sa_freq_eval.txt'
     # MLM_PROBABILITY=$(getMLMprob /home/sahasra/pretraining/Code/taggedData/Hindi/en_hi_sa_freq.txt)
 
+    # Experiment: cost benefit: baseline MLM l3cube
+    OUT_DIR='/home/sahasra/pretraining/PretrainedModels/Hindi/en_hi_baseline_l3cube_185k'
+    TRAIN_FILE='/home/sahasra/pretraining/Code/taggedData/Hindi/en_hi_baseline_l3cube_185k_train.txt'
+    EVAL_FILE='/home/sahasra/pretraining/Code/taggedData/Hindi/en_hi_baseline_l3cube_185k_eval.txt'
+    MLM_PROBABILITY=0.15
+
 
 ## Spanish
     # Baseline
@@ -115,6 +163,12 @@ function getMLMprob {
     # TRAIN_FILE='/home/sahasra/pretraining/Code/taggedData/Spanish/en_es_freq_train.txt'
     # EVAL_FILE='/home/sahasra/pretraining/Code/taggedData/Spanish/en_es_freq_eval.txt'
     # MLM_PROBABILITY=$(getMLMprob /home/sahasra/pretraining/Code/taggedData/Spanish/en_es_freq.txt)
+
+    # Switch MLM
+    # OUT_DIR='/home/sahasra/pretraining/PretrainedModels/Spanish/en_es_switch'
+    # TRAIN_FILE='/home/sahasra/pretraining/Code/taggedData/Spanish/en_es_switch_train.txt'
+    # EVAL_FILE='/home/sahasra/pretraining/Code/taggedData/Spanish/en_es_switch_eval.txt'
+    # MLM_PROBABILITY=$(getMLMprob /home/sahasra/pretraining/Code/taggedData/Spanish/en_es_switch.txt)
 
     # Pretrain with SA finetune data (baseline)
     # OUT_DIR='/home/sahasra/pretraining/PretrainedModels/Spanish/en_es_sa_baseline'
@@ -136,10 +190,10 @@ function getMLMprob {
     # MLM_PROBABILITY=0.15
 
     # FreqMLM
-    OUT_DIR='/home/sahasra/pretraining/PretrainedModels/Malayalam/en_ml_freq'
-    TRAIN_FILE='/home/sahasra/pretraining/Code/taggedData/Malayalam/en_ml_freq_train.txt'
-    EVAL_FILE='/home/sahasra/pretraining/Code/taggedData/Malayalam/en_ml_freq_eval.txt'
-    MLM_PROBABILITY=$(getMLMprob /home/sahasra/pretraining/Code/taggedData/Malayalam/en_ml_freq.txt)
+    # OUT_DIR='/home/sahasra/pretraining/PretrainedModels/Malayalam/en_ml_freq_aks'
+    # TRAIN_FILE='/home/sahasra/pretraining/Code/taggedData/Malayalam/en_ml_freq_train.txt'
+    # EVAL_FILE='/home/sahasra/pretraining/Code/taggedData/Malayalam/en_ml_freq_eval.txt'
+    # MLM_PROBABILITY=$(getMLMprob /home/sahasra/pretraining/Code/taggedData/Malayalam/en_ml_freq.txt)
 
     # Pretrain with SA finetune data (baseline)
     # OUT_DIR='/home/sahasra/pretraining/PretrainedModels/Malayalam/en_ml_sa_baseline'
@@ -156,6 +210,7 @@ function getMLMprob {
 ## Tamil
     # Baseline
     # OUT_DIR='/home/sahasra/pretraining/PretrainedModels/Tamil/en_ta_baseline'
+    # OUT_DIR='/home/sahasra/pretraining/PretrainedModels/Tamil/en_ta_baseline_new'
     # TRAIN_FILE='/home/sahasra/pretraining/Code/taggedData/Tamil/en_ta_baseline_train.txt'
     # EVAL_FILE='/home/sahasra/pretraining/Code/taggedData/Tamil/en_ta_baseline_eval.txt'
     # MLM_PROBABILITY=0.15
@@ -206,8 +261,10 @@ python3.6 $PWD/Code/utils/pretrain.py \
     --save_steps 240 \
     --save_total_limit 1 \
     --mlm_probability $MLM_PROBABILITY \
-    --overwrite_output_dir
+    --overwrite_output_dir \
     # --residual_bert \
+    # --res_layer 10 \
+    # --res_dropout 0.5 \
     # --amb_tokens \
     # --mask0_probability 0.38 \
     # --mask1_probability 0.285 \

@@ -8,7 +8,7 @@ MODEL_TYPE=${4:-bert}
 DATA_DIR=${5:-"$REPO/Data/Processed_Data"}
 OUT_DIR=${6:-"$REPO/Results"}
 # export NVIDIA_VISIBLE_DEVICES=
-export CUDA_VISIBLE_DEVICES=2
+export CUDA_VISIBLE_DEVICES=3
 
 BATCH_SIZE=8
 MAX_SEQ=256
@@ -17,11 +17,15 @@ MAX_SEQ=256
 if [ $LANG == "HI" ] 
 then
 	TASK="Sentiment_EN_HI/Romanized"
-	# pretrainedModel='mBERT'
-	# MODEL_TYPE='residual-bert_10_0.5'
-	pretrainedModel='en_hi_baseline_l3cube_185k'
+	pretrainedModel='mBERT'
 	DATA_SUB_DIR="SemEval_3way"
 	mod="PretrainedModels/Hindi/${pretrainedModel}/final_model"
+elif [ $LANG == "HI-L3CUBE" ] 
+then
+	TASK="Sentiment_EN_HI/Romanized"
+	pretrainedModel='hing-mBERT-l3cube'
+	MODEL='l3cube-pune/hing-mbert'
+	DATA_SUB_DIR="SemEval_3way"
 elif [ $LANG == "ES" ] 
 then
 	TASK="Sentiment_EN_ES"
@@ -37,8 +41,8 @@ then
 elif [ $LANG == "TA" ] 
 then
 	TASK="Sentiment_EN_TM"
+	pretrainedModel='mBERT-nopretrain'
 	# pretrainedModel='en_ta_freq'
-	pretrainedModel='en_ta_baseline_new'
 	DATA_SUB_DIR=""
 	mod="PretrainedModels/Tamil/${pretrainedModel}/final_model"
 else
@@ -69,7 +73,7 @@ do
 
 		echo Seed: $seed, Epoch: $epochs
 
-		python3.6 $PWD/Code/utils/BertSequenceTrained.py \
+		python3.6 $PWD/Code/experiments/l3cube-data/train_sa_l3cube_hingmbert.py \
 		--output_dir $OUT_DIR/$OUT/$OUTPUT_DIR_FINE \
 		--data_dir $DATA_DIR/$TASK/$DATA_SUB_DIR \
 		--model_type $MODEL_TYPE \
@@ -86,7 +90,7 @@ do
 		--max_seq_length $MAX_SEQ \
 		--gradient_accumulation_steps 1 \
 		--save_file_start $saveFileStart \
-		--model_loc $mod
+		# --model_loc $mod
 		# --wandb \
 		# --experiment-name "test_${pretrainedModel}_seed${seed}_epoch${epochs}_testset"
 

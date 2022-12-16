@@ -10,7 +10,7 @@ OUT_DIR=${5:-"$REPO/Results"}
 MLM_DATA_FILE=${6:-"$REPO/ishan_data/ishan_plus_65k.txt"}
 # MLM_DATA_FILE=${6:-"$REPO/ishan_data/ishan_plus_65k_plus_qa.txt"}
 # export NVIDIA_VISIBLE_DEVICES=2
-export CUDA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=0
 
 # EPOCH=4
 BATCH_SIZE=4 #1
@@ -20,10 +20,13 @@ MAX_SEQ=256
 # MLM_MAX_SEQ=256
 # PRETR_EPOCH=3
 
-wandb login 98d0804992a30ee86b8971c931bffcfeff2d5640
+# wandb login 98d0804992a30ee86b8971c931bffcfeff2d5640
 
 language='Hindi'
-pretrainModel='en_hi_switch_inverted_residbert'
+pretrainModel='l3cube140k44k_en_hi_switch'
+
+# To run Residual Bert experiments:
+# Code/./train_qa.sh QA_EN_HI bert-base-multilingual-cased residual-bert_4_0.2
 
 for seed in 32 42 52 62 72 82 92 102 112 122
 	do
@@ -54,8 +57,8 @@ for seed in 32 42 52 62 72 82 92 102 112 122
 			--train_file train-v2.0.json \
 			--predict_file dev-v2.0.json \
 			--model_loc $mod \
-			--wandb \
-			--experiment-name "${pretrainModel}_seed${seed}_epoch${ep}"
+			# --wandb \
+			# --experiment-name "${pretrainModel}_seed${seed}_epoch${ep}"
     	done
   	done 
 done

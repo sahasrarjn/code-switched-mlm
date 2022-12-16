@@ -1,18 +1,26 @@
-from transformers import BertForMaskedLM, BertForQuestionAnswering
+from transformers import BertForMaskedLM, BertForQuestionAnswering, BertForSequenceClassification
 
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn import CrossEntropyLoss, MSELoss
+
+import logging
+logger = logging.getLogger(__name__)
+
 
 ##############################################
 # BERTForMaskedLM with Residual Connections  #
 ##############################################
 class ResidualBertForMaskedLM(BertForMaskedLM):
-    def __init__(self, config, out_embed=768, res_layer=3, dropout=0.2) -> None:
+    def __init__(self, config, out_embed=768, res_layer=2, dropout=0.2) -> None:
         super(ResidualBertForMaskedLM, self).__init__(config)
         self.out_embed = out_embed
         self.res_layer = res_layer
         self.dropout = dropout
         self.ln = nn.LayerNorm((config.hidden_size,))
+        logging.info("ResidualBertForMaskedLM")
+        logging.info("RES_LAYER: {}".format(self.res_layer))
+        logging.info("DROPOUT: {}".format(self.dropout))
     
     def forward(
         self,
@@ -66,12 +74,15 @@ class ResidualBertForMaskedLM(BertForMaskedLM):
 # BERTForQuestionAnswering with Residual Connections  #
 #######################################################
 class ResidualBertForQuestionAnswering(BertForQuestionAnswering):
-    def __init__(self, config, out_embed=768, res_layer=3, dropout=0.2) -> None:
+    def __init__(self, config, out_embed=768, res_layer=2, dropout=0.2) -> None:
         super(ResidualBertForQuestionAnswering, self).__init__(config)
         self.out_embed = out_embed
         self.res_layer = res_layer
         self.dropout = dropout
         self.ln = nn.LayerNorm((config.hidden_size,))
+        logging.info("ResidualBertForQuestionAnswering")
+        logging.info("RES_LAYER: {}".format(self.res_layer))
+        logging.info("DROPOUT: {}".format(self.dropout))
     
     def forward(
         self,
@@ -122,3 +133,59 @@ class ResidualBertForQuestionAnswering(BertForQuestionAnswering):
             outputs = (total_loss,) + outputs
 
         return outputs
+
+
+############################################################
+# BERTForSequenceClassification with Residual Connections  #
+############################################################
+class ResidualBertForSequenceClassification(BertForSequenceClassification):
+    def __init__(self, config, out_embed=768, res_layer=2, res_dropout=0.2) -> None:
+        super(ResidualBertForSequenceClassification, self).__init__(config)
+        self.out_embed = out_embed
+        self.res_layer = res_layer
+        self.res_dropout = res_dropout
+        self.ln = nn.LayerNorm((config.hidden_size,))
+        logging.info("ResidualBertForSequenceClassification")
+        logging.info("RES_LAYER: {}".format(self.res_layer))
+        logging.info("DROPOUT: {}".format(self.res_dropout))
+
+    def forward(
+        self,
+        input_ids=None,
+        attention_mask=None,
+        token_type_ids=None,
+        position_ids=None,
+        head_mask=None,
+        inputs_embeds=None,
+        labels=None,
+    ):
+        outputs = self.bert(
+            input_ids,
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids,
+            position_ids=position_ids,
+            head_mask=head_mask,
+            inputs_embeds=inputs_embeds,
+        )
+
+        skip_conn = outputs[2][self.res_layer]
+        final_out = outputs[2][-1]
+        resid_out = F.dropout(skip_conn, p=self.res_dropout) + final_out
+        pooled_output = self.bert.pooler(resid_out)
+
+        pooled_output = self.dropout(pooled_output)
+        logits = self.classifier(pooled_output)
+
+        outputs = (logits,) + outputs[2:]  # add hidden states and attention if they are here
+
+        if labels is not None:
+            if self.num_labels == 1:
+                #  We are doing regression
+                loss_fct = MSELoss()
+                loss = loss_fct(logits.view(-1), labels.view(-1))
+            else:
+                loss_fct = CrossEntropyLoss()
+                loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
+            outputs = (loss,) + outputs
+
+        return outputs  # (loss), logits, (hidden_states), (attentions)

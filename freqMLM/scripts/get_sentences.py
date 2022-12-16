@@ -1,21 +1,21 @@
 import os 
 
-directory = '../data/CS_LID_gluecos'
+filen = '../../Data/MLM/Hindi/L3Cube-HingLID/processed/l3cube_140k_44k_tagged.txt'
 
 def print_sentences(file):
     with open(file, 'r') as f:
         lines = f.readlines()
-        buffer = []
+        buffer = ""
         for line in lines:
-            print(line)
+            line = line.strip()
             if line == '':
                 print(buffer)
+                buffer = ""
                 continue
             word, lid = line.split('\t')
-            buffer.append((word, lid))
+            buffer += word + ' '
     
-
-print_sentences(directory + '/train.txt')
+print_sentences(filen)
 
 # for filename in os.listdir(directory):
     # f = os.path.join(directory, filename)

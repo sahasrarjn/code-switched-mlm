@@ -3,8 +3,8 @@ import argparse
 from tqdm import tqdm
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-s', '--source', type=str, default='../Malayalam/all.txt', help="Source file")
-parser.add_argument('-t', '--target', type=str, default='../Malayalam/all_clean.txt', help="Target file")
+parser.add_argument('-s', '--source', type=str, default='../Spanish/all.txt', help="Source file")
+parser.add_argument('-t', '--target', type=str, default='../Spanish/all_clean.txt', help="Target file")
 args = parser.parse_args()
 
 
@@ -33,15 +33,16 @@ def remove_emojis(data):
 
 
 def remove_special_chars(data):
-    special_char = re.compile(r'[@_!#$%.`^&,*()<>?/\'\|"“}{~:-]')
-    return re.sub(special_char, ' ', data)
+    special_char = re.compile(r'[@_!#$%.;`^&,*=()<>?/\'’´¿…\|"“”}{~:-]')
+    data = re.sub(special_char, ' ', data)
+    data = re.sub(r'\[', '', data)
+    data = re.sub(r'\]', '', data)
+    return data
 
-
-special_tokens = r'[@_!#$%.`^&,*()<>?/\'\|}{~:]'
 
 def clean_line(line):
     line = remove_emojis(line)
-    line = remove_special_chars(line)
+    # line = remove_special_chars(line)
     line = ' '.join(line.split())
     return line + '\n'
 
@@ -51,4 +52,5 @@ with open(args.target, 'w+') as out:
         lines = inf.readlines()
         for line in tqdm(lines):
             line = clean_line(line)
-            out.write(line)
+            if line != '':
+                out.write(line)

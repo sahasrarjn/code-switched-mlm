@@ -1,26 +1,12 @@
-#!/usr/bin/python3
-
 import random
 import argparse
 from tqdm import tqdm
-
-# Standard Switch MLM
-# --file ../en_hi_switch.txt
-
-# FreqMLM
-# --file ../en_hi_freq.txt
-
-# Experiment: Inverted Switch MLM
-# --file ../en_hi_switch_inverted.txt
-
-# Experiment: FreqMLM Complement
-# --file ../en_hi_freq_complement.txt
 
 # Experiment: FreqMLM maskable OTHER
 # --file ../en_hi_freq_maskableOTHER.txt
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-f', '--file', type=str, default='../Malayalam/en_ml_freq.txt', help='Input file to split into train, eval files')
+parser.add_argument('-f', '--file', type=str, default='../en_hi_baseline.txt', help='Input file to split into train, eval files')
 parser.add_argument('--frac', type=float, default=0.1, help='Split fraction for train/eval')
 parser.add_argument('--seed', type=int, default=0, help='Random seed')
 args = parser.parse_args()

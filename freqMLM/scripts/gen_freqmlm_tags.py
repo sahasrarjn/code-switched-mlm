@@ -6,7 +6,7 @@ import numpy as np
 from tqdm import tqdm
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-l', '--lang', type=str, default='HI', choices=['HI', 'ES', 'ML', 'TA'], help='EN-X, Language X for CS data')
+parser.add_argument('-l', '--lang', type=str, default='HI', help='EN-X, Language X for CS data')
 parser.add_argument('-a', '--algo', type=str, default='nll', choices=['nll', 'x-hit'], help='Masking algorithm')
 args = parser.parse_args()
 
@@ -18,15 +18,19 @@ if lang == 'HI':    Lang = 'Hindi'
 elif lang == 'ML':  Lang = 'Malayalam'
 elif lang == 'TA':  Lang = 'Tamil'
 elif lang == 'ES':  Lang = 'Spanish'
+elif lang == "HI-L3CUBE": lang, Lang = 'HI', 'Hindi-l3cube'
+elif lang == "HI-L3CUBE140k44k": lang, Lang = 'HI', 'Hindi-l3cube140k44k'
 else:   raise Exception('Invalid language id')
 
 
 
 os.makedirs(f'../data/{Lang}', exist_ok=True)
 sentence_file = f'../../Data/MLM/{Lang}/all_clean.txt'
-processed_file = f'../data/{Lang}/{Lang}-freqmlm-lidtags-processed.txt'
-processed_file_noamb = f'../data/{Lang}/{Lang}-freqmlm-lidtags-processed-noamb.txt'
+processed_file = f'../data/{Lang}/{Lang}-freqmlm-lidtags-processed-{args.algo}.txt'
+processed_file_noamb = f'../data/{Lang}/{Lang}-freqmlm-lidtags-processed-{args.algo}-noamb.txt'
 output_file = f'../data/{Lang}/{Lang}-freqmlm-lidtags.txt'
+google_10k_words = '../data/google-10000-english-no-swears.txt'
+
 EN_VOCAB = '../vocab/vocab_EN.txt'
 X_VOCAB = f'../vocab/vocab_{lang}.txt'
 x_aksharantar_vocab = f'../vocab/aksharantar/vocab_{lang}.txt' if lang != 'ES' else None
@@ -35,7 +39,6 @@ x_aksharantar_vocab = f'../vocab/aksharantar/vocab_{lang}.txt' if lang != 'ES' e
 
 vocab_en = dict()
 vocab_x = dict()
-vocab_x_aks = set()
 
 tail_x = 0
 tail_en = 0
@@ -55,10 +58,20 @@ with open(X_VOCAB, 'r') as hiv:
 tail = min(tail_x, tail_en)
 
 if x_aksharantar_vocab:
+    vocab_x_aks = set()
+    common_eng_words = set()
+
+    with open(google_10k_words, 'r') as f:
+        for line in f.readlines():
+            word = line.strip()
+            common_eng_words.add(word)
+    
     with open(x_aksharantar_vocab, 'r') as f:
         for line in f.readlines():
             word = line.strip()
-            vocab_x_aks.add(word)
+            if word not in common_eng_words:
+                vocab_x_aks.add(word)
+    
 
 sentences = []
 with open(sentence_file, 'r') as sentfile:
@@ -89,16 +102,16 @@ def nll_mask(word):
     elif word_nll_x == -1 and word_nll_en != -1:
         mask = "EN" # this case seems a bit flimsy, what if its extremely rare in hindi and doesnt occur in english??
     elif word_nll_en == -1 and word_nll_x != -1:
-        mask = args.lang
+        mask = lang
     elif word_nll_x + np.log(10) < word_nll_en:
-        mask = args.lang
+        mask = lang
     elif word_nll_en + np.log(10) < word_nll_x:
         mask = "EN"
     elif np.abs(word_nll_en - word_nll_x) < np.log(10):
         if word_nll_en < word_nll_x:
             mask = "AMB-EN"
         else:
-            mask = f"AMB-{args.lang}"
+            mask = f"AMB-{lang}"
     return mask
 
 def x_present_mask(word):
@@ -108,14 +121,17 @@ def x_present_mask(word):
 
     mask = None
     if word in vocab_x_aks:
-        return args.lang
+        return lang
     
     word_nll_en = vocab_en.get(word, -1)
     if word_nll_en == -1:
-        mask = "OTHER"
+        if word.isnumeric():
+            # print(word)
+            mask = "OTHER"
+        else:
+            mask = lang
     else:
         mask = "EN"
-    
     return mask
 
 
@@ -129,6 +145,7 @@ for sentence in tqdm(sentences):
         if args.algo == 'nll':
             mask = nll_mask(word)
         elif args.algo == 'x-hit':
+            if lang == 'ES': raise Exception("Aksharantar vocab not present for Spanish")
             mask = x_present_mask(word)
         else:
             raise NotImplementedError

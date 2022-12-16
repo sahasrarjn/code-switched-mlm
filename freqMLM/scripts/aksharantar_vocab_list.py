@@ -17,7 +17,7 @@ for filename in os.listdir(args.source_dir):
     with open(filename, 'r') as f:
         data = json.load(f)
         for word in tqdm(data):
-            if word['source'] != 'Dakshina':
+            if word['source'] != 'AK-NEF':
                 vocab.add(word['english word'])
             else:
                 # vocab.add(word['english word'])
@@ -26,7 +26,7 @@ for filename in os.listdir(args.source_dir):
 vocab = list(vocab)
 vocab = sorted(vocab)
 
-print(f'Ignored {dakshinaCount} words from Dakshina')
+print(f'Ignored {dakshinaCount} words from AK-NEF')
 
 print(f'Writing to file: {args.dest}')
 with open(args.dest, 'w+') as f:

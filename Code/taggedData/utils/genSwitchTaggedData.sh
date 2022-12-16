@@ -1,7 +1,39 @@
 targetFile=${1:-'../en_hi_switch.txt'}
 sourceDir=${2:-'../../../Data/MLM/withLIDtags/Hindi/combined'}
 
+## L3cube English-Hindi
+    # Experiment Standard Switch MLM (just the switch data of l3cube)
+    # targetFile='../Hindi/l3cube_en_hi_switch.txt'
+    # sourceDir='../../../Data/MLM/Hindi/L3Cube-HingLID/processed/l3cube_44k_og_tagged.txt'
+
+    # Experiment Frequency MLM on 185k sentences sampled from L3CUBE-unlabelled 52 million sents
+    # targetFile='../Hindi/l3cube185k_en_hi_freq.txt'
+    # sourceDir='../../../freqMLM/data/Hindi-l3cube/Hindi-l3cube-freqmlm-lidtags-processed-nll-noamb.txt'
+
+    # Experiment Baseline MLM on 185k sentences sampled from L3CUBE-unlabelled 52 million sents
+    # Baseline: masktype: all-tokens
+    # targetFile='../Hindi/l3cube185k_en_hi_baseline.txt'
+    # sourceDir='../../../freqMLM/data/Hindi-l3cube/Hindi-l3cube-freqmlm-lidtags-processed-nll-noamb.txt'
+
+    # Experiment Switch MLM on 140k (unlabelled, gluecos tagged) + 44k (labelled) sentences sampled from L3CUBE
+    # targetFile='../Hindi/l3cube140k44k_en_hi_switch.txt'
+    # sourceDir='../../../Data/MLM/Hindi/L3Cube-HingLID/processed/l3cube_140k_44k_tagged.txt'
+
+    # Experiment Frequency MLM on 140k (unlabelled) + 44k (labelled) sentences sampled from L3CUBE
+    # targetFile='../Hindi/l3cube140k44k_en_hi_freq.txt'
+    # sourceDir='../../../freqMLM/data/Hindi-l3cube140k44k/Hindi-l3cube140k44k-freqmlm-lidtags-processed-nll-noamb.txt'
+
+    # Experiment Baseline MLM on 140k (unlabelled) + 44k (labelled) sentences sampled from L3CUBE
+    # Baseline: masktype: all-tokens
+    # targetFile='../Hindi/l3cube140k44k_en_hi_baseline.txt'
+    # sourceDir='../../../Data/MLM/Hindi/L3Cube-HingLID/processed/l3cube_140k_44k_tagged.txt'
+
+
 ## English-Hindi
+    # Baseline: masktype: all-token
+    targetFile='../en_hi_baseline.txt'
+    sourceDir='../../../Data/MLM/withLIDtags/Hindi/combined'
+
     # Experiment Switch Inverted LID
     # Replace EN with HI and HI with EN (example)
     # targetFile='../en_hi_switch_inverted.txt'
@@ -34,6 +66,10 @@ sourceDir=${2:-'../../../Data/MLM/withLIDtags/Hindi/combined'}
     # targetFile='../Spanish/en_es_freq.txt'
     # sourceDir='../../../freqMLM/data/Spanish/Spanish-freqmlm-lidtags-processed-noamb.txt'
 
+    # Switch MLM
+    # targetFile='../Spanish/en_es_switch.txt'
+    # sourceDir='../../../Data/MLM/Spanish/all_switch_lid.txt'
+
     # Experiment: Pretrain with fine tune data (SA)
     # targetFile='../Spanish/en_es_sa_baseline.txt'
     # sourceDir='../../experiments/pretrain-finetune-data/data/spanish/sa_en.txt'
@@ -49,7 +85,7 @@ sourceDir=${2:-'../../../Data/MLM/withLIDtags/Hindi/combined'}
 
     # FreqMLM
     # targetFile='../Malayalam/en_ml_freq.txt'
-    # sourceDir='../../../freqMLM/data/Malayalam/Malayalam-freqmlm-lidtags-processed-nll-noamb.txt'
+    # sourceDir='../../../freqMLM/data/Malayalam/Malayalam-freqmlm-lidtags-processed.txt'
 
     # Experiment: Pretrain with fine tune data (SA)
     # targetFile='../Malayalam/en_ml_sa_baseline.txt'
@@ -80,5 +116,5 @@ sourceDir=${2:-'../../../Data/MLM/withLIDtags/Hindi/combined'}
 python3 preprocessMLMdata.py \
     --source $sourceDir \
     --target $targetFile \
-    --tokenizer-name bert-base-multilingual-cased \
-    --mask-type around-switch
+    --tokenizer-name xlm-roberta-base \
+    --mask-type all-tokens

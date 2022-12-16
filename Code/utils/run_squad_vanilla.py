@@ -612,7 +612,7 @@ def main():
         "--model_loc",
         default=None,
         type=str,
-        required=True,
+        # required=True,
         help="The file to write fi values.",
     )
     parser.add_argument(
@@ -685,12 +685,20 @@ def main():
         torch.distributed.barrier()
 
     args.model_type = args.model_type.lower()
+    if args.model_type.startswith("residual-bert"):
+        # model_type is specified as "residual-bert_<layerno>_<dropoutval>"
+        parselist = args.model_type.split('_')
+        assert len(parselist) == 3
+        args.model_type = parselist[0]
+        res_layer = int(parselist[1])
+        res_dropout = float(parselist[2])
+
     config_class, model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
     config = config_class.from_pretrained(
-        './'+args.model_loc+'/config.json',
+        './'+args.model_loc+'/config.json' if args.model_loc else args.model_name_or_path,
         # './'+args.config_name if args.config_name else args.model_name_or_path,
         # './ArchikiCombinedMLM-english-bert/final_model/config.json',
-        # output_hidden_states=False,
+        output_hidden_states=True,
         cache_dir=args.cache_dir if args.cache_dir else None,
     )
     tokenizer = tokenizer_class.from_pretrained(
@@ -698,11 +706,20 @@ def main():
         do_lower_case=args.do_lower_case,
         cache_dir=args.cache_dir if args.cache_dir else None,
     )
-    model = model_class.from_pretrained(
-        './'+args.model_loc+'/pytorch_model.bin',
-        config=config,
-        cache_dir=args.cache_dir if args.cache_dir else None,
-    )
+    if args.model_type == "residual-bert":
+        model = model_class.from_pretrained(
+            './'+args.model_loc+'/pytorch_model.bin' if args.model_loc else args.model_name_or_path,
+            config=config,
+            res_layer=res_layer,
+            dropout=res_dropout,
+            cache_dir=args.cache_dir if args.cache_dir else None,
+        )
+    else:
+        model = model_class.from_pretrained(
+            './'+args.model_loc+'/pytorch_model.bin' if args.model_loc else args.model_name_or_path,
+            config=config,
+            cache_dir=args.cache_dir if args.cache_dir else None,
+        )
     print(type(model))
 
     if args.local_rank == 0:
