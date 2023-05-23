@@ -1,0 +1,14 @@
+echo 185
+./genSwitchTaggedData.sh 185
+echo 285
+./genSwitchTaggedData.sh 285
+echo 385
+./genSwitchTaggedData.sh 385
+echo 485
+./genSwitchTaggedData.sh 485
+echo 585
+./genSwitchTaggedData.sh 585
+echo 785
+./genSwitchTaggedData.sh 785
+echo 985
+./genSwitchTaggedData.sh 985

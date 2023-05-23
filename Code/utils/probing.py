@@ -24,6 +24,8 @@ from transformers import (
 
 from customlibs.custom_language_modeling_probing import LineByLineProbeDataset
 
+from customlibs.residual_bert import ResidualBertModel
+
 logger = logging.getLogger(__name__)
 
 @dataclass
@@ -32,11 +34,19 @@ class ModelArguments:
     Arguments pertaining to which model/config/tokenizer we are going to fine-tune, or train from scratch.
     """
 
+    model_name: Optional[str] = field(
+        default="bert",
+        metadata={"help": "Choose from bert or residual-bert_<layer>_<dropout>"},
+    )
     model_path: Optional[str] = field(
         default=None,
         metadata={
             "help": "Path to the pretrained weights for the model. This is the path to the baseline if 'conditional-probing'"
         },
+    )
+    model_conditional_name: Optional[str] = field(
+        default="bert",
+        metadata={"help": "Choose from bert or residual-bert_<layer>_<dropout>"},
     )
     model_conditional_path: Optional[str] = field(
         default=None,
@@ -44,9 +54,12 @@ class ModelArguments:
             "help": "Path to the pretrained weights for the model. Path to the specialized model like switchMLM/freqMLM"
         },
     )
+    probe_layer: int = field(
+        default=-1, metadata={"help": "Choose layer to probe, default -> last layer"}
+    )
     model_type: Optional[str] = field(
         default="linear-head",
-        metadata={"help": "Choose from linear-head or bilstm-head or conditional-linear-head"},
+        metadata={"help": "Choose from linear-head or bilstm-head or mlp-head or conditional-linear-head or conditional-mlp-head"},
     )
     cache_dir: Optional[str] = field(
         default=None,
@@ -118,15 +131,16 @@ def get_dataset(
 
 
 class BertBiLSTMHead(nn.Module):
-    def __init__(self, bert, out_embed, hidden_dim) -> None:
+    def __init__(self, bert, out_embed, hidden_dim, probe_layer) -> None:
         super(BertBiLSTMHead, self).__init__()
         self.hidden_dim = hidden_dim
+        self.probe_layer = probe_layer
         self.bert = bert
         self.lstm = nn.LSTM(out_embed, hidden_dim, batch_first=True, bidirectional=True)
         self.linear = nn.Linear(2*hidden_dim, 2)
     
     def forward(self, inp):
-        bert_embedding, _ = self.bert(inp)
+        bert_embedding = self.bert(inp)[2][self.probe_layer]
         lstm_out, (_, _) = self.lstm(bert_embedding)
         linear_output = self.linear(lstm_out)
         logprobs = F.log_softmax(linear_output, dim=-1)
@@ -134,13 +148,14 @@ class BertBiLSTMHead(nn.Module):
 
 
 class BertLinearHead(nn.Module):
-    def __init__(self, bert, out_embed) -> None:
+    def __init__(self, bert, out_embed, probe_layer) -> None:
         super(BertLinearHead, self).__init__()
+        self.probe_layer = probe_layer
         self.bert = bert
         self.linear = nn.Linear(out_embed, 2)
     
     def forward(self, inp):
-        bert_embedding, _ = self.bert(inp)
+        bert_embedding = self.bert(inp)[2][self.probe_layer]
         linear_output = self.linear(bert_embedding)
         logprobs = F.log_softmax(linear_output, dim=-1)
         return logprobs
@@ -154,14 +169,55 @@ class BertConditionalLinearHead(nn.Module):
         self.linear = nn.Linear(2*out_embed, 2)
     
     def forward(self, inp):
-        bert1_embedding, _ = self.bert1(inp)
+        bert1_embedding = self.bert1(inp)[0]
         if self.bert2 is not None:
-            bert2_embedding, _ = self.bert2(inp)
+            bert2_embedding = self.bert2(inp)[0]
         else:
             bert2_embedding = torch.zeros_like(bert1_embedding)
         concat_embed = torch.cat((bert1_embedding, bert2_embedding), dim=-1)
         linear_output = self.linear(concat_embed)
         logprobs = F.log_softmax(linear_output, dim=-1)
+        return logprobs
+
+
+class BertMLPHead(nn.Module):
+    def __init__(self, bert, out_embed, int_embed, probe_layer) -> None:
+        super(BertMLPHead, self).__init__()
+        self.probe_layer = probe_layer
+        self.bert = bert
+        self.linear1 = nn.Linear(out_embed, int_embed)
+        self.relu = nn.ReLU()
+        self.linear2 = nn.Linear(int_embed, 2)
+    
+    def forward(self, inp):
+        bert_embedding = self.bert(inp)[2][self.probe_layer]
+        linear_output = self.linear1(bert_embedding)
+        nonlin_output = self.relu(linear_output)
+        linear_output = self.linear2(nonlin_output)
+        logprobs = F.log_softmax(linear_output, dim=-1)
+        return logprobs
+
+
+class BertConditionalMLPHead(nn.Module):
+    def __init__(self, bert1, bert2=None, out_embed=768, int_embed=512) -> None:
+        super(BertConditionalMLPHead, self).__init__()
+        self.bert1 = bert1
+        self.bert2 = bert2
+        self.linear1 = nn.Linear(2*out_embed, int_embed)
+        self.relu = nn.ReLU()
+        self.linear2 = nn.Linear(int_embed, 2)
+    
+    def forward(self, inp):
+        bert1_embedding = self.bert1(inp)[0]
+        if self.bert2 is not None:
+            bert2_embedding = self.bert2(inp)[0]
+        else:
+            bert2_embedding = torch.zeros_like(bert1_embedding)
+        concat_embed = torch.cat((bert1_embedding, bert2_embedding), dim=-1)
+        linear_output1 = self.linear1(concat_embed)
+        nonlin_output = self.relu(linear_output1)
+        linear_output2 = self.linear2(nonlin_output)
+        logprobs = F.log_softmax(linear_output2, dim=-1)
         return logprobs
 
 
@@ -219,12 +275,26 @@ def main():
     # Load pretrained model and tokenizer
     tokenizer = BertTokenizer.from_pretrained('bert-base-multilingual-cased')
 
-    config1 = BertConfig.from_pretrained(model_args.model_path)
-    bert1 = BertModel.from_pretrained(
-        model_args.model_path + '/pytorch_model.bin',
-        config=config1
-    )
+    config1 = BertConfig.from_pretrained(model_args.model_path, output_hidden_states=True)
+
+    if model_args.model_name == 'bert':
+        bert1 = BertModel.from_pretrained(
+            model_args.model_path + '/pytorch_model.bin',
+            config=config1
+        )
+    elif model_args.model_name.startswith('residual-bert'):
+        parselist = model_args.model_name.split('_')
+        assert len(parselist) == 3
+        res_layer = int(parselist[1])
+        res_dropout = float(parselist[2])
+        bert1 = ResidualBertModel.from_pretrained(
+            model_args.model_path + '/pytorch_model.bin',
+            config=config1,
+            res_layer=res_layer,
+            res_dropout=res_dropout
+        )
     bert1.resize_token_embeddings(len(tokenizer))
+
     # Freeze bert layers
     for name, param in bert1.named_parameters():
         if 'classifier' not in name:
@@ -234,10 +304,22 @@ def main():
     bert2 = None
     if model_args.model_conditional_path is not None:
         config2 = BertConfig.from_pretrained(model_args.model_conditional_path)
-        bert2 = BertModel.from_pretrained(
-            model_args.model_conditional_path + '/pytorch_model.bin',
-            config=config2
-        )
+        if model_args.model_conditional_name == 'bert':
+            bert2 = BertModel.from_pretrained(
+                model_args.model_conditional_path + '/pytorch_model.bin',
+                config=config2
+            )
+        elif model_args.model_conditional_name.startswith('residual-bert'):
+            parselist = model_args.model_conditional_name.split('_')
+            assert len(parselist) == 3
+            res_layer = int(parselist[1])
+            res_dropout = float(parselist[2])
+            bert2 = ResidualBertModel.from_pretrained(
+                model_args.model_conditional_path + '/pytorch_model.bin',
+                config=config2,
+                res_layer=res_layer,
+                res_dropout=res_dropout
+            )
         bert2.resize_token_embeddings(len(tokenizer))
         # Freeze bert layers
         for name, param in bert2.named_parameters():
@@ -245,11 +327,15 @@ def main():
                 param.requires_grad = False
 
     if model_args.model_type == "bilstm-head":
-        model = BertBiLSTMHead(bert1, 768, 256)
+        model = BertBiLSTMHead(bert1, 768, 256, model_args.probe_layer)
     elif model_args.model_type == "linear-head":
-        model = BertLinearHead(bert1, 768)
+        model = BertLinearHead(bert1, 768, model_args.probe_layer)
+    elif model_args.model_type == "mlp-head":
+        model = BertMLPHead(bert1, 768, 256, model_args.probe_layer)
     elif model_args.model_type == "conditional-linear-head":
         model = BertConditionalLinearHead(bert1, bert2, 768)
+    elif model_args.model_type == "conditional-mlp-head":
+        model = BertConditionalMLPHead(bert1, bert2, 768, 512)
     model.to(device)
 
     if data_args.block_size <= 0:

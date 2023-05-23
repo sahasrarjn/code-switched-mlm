@@ -169,3 +169,102 @@ class DataCollatorForLanguageModeling(DataCollator):
         del tomask
         # The rest of the time (10% of the time) we keep the masked input tokens unchanged
         return inputs, labels
+
+
+@dataclass
+class DataCollatorForLanguageProbeModeling(DataCollator):
+    """
+    Data collator used for language modeling.
+    - collates batches of tensors, honoring their tokenizer's pad_token
+    - preprocesses batches for masked language modeling
+    """
+
+    tokenizer: PreTrainedTokenizer
+    mlm: bool = True
+    mlm_probability: list = field(default_factory=[0.15])
+
+    def collate_batch(self, examples: List[torch.Tensor]) -> Dict[str, torch.Tensor]:
+        classes = torch.tensor([e[3] for e in examples], dtype=torch.long)
+        tomask = [e[2] for e in examples]
+        target = [e[1] for e in examples]
+        examples = [e[0] for e in examples]
+        batch = self._tensorize_batch(examples)
+        tomask = self._tensorize_mask(tomask)
+        if self.mlm:
+            inputs, labels = self.mask_tokens([batch, tomask, classes])
+            batch_data = {"input_ids": inputs, "masked_lm_labels": labels}
+        else:
+            batch_data = {"input_ids": batch, "labels": batch}
+
+        batch_data["aux_labels"] = self._tensorize_batch(target)
+        return batch_data
+
+    def _tensorize_batch(self, examples: List[torch.Tensor]) -> torch.Tensor:
+        length_of_first = examples[0].size(0)
+        are_tensors_same_length = all(x.size(0) == length_of_first for x in examples)
+        if are_tensors_same_length:
+            return torch.stack(examples, dim=0)
+        else:
+            if self.tokenizer._pad_token is None:
+                raise ValueError(
+                    "You are attempting to pad samples but the tokenizer you are using"
+                    f" ({self.tokenizer.__class__.__name__}) does not have one."
+                )
+            return pad_sequence(examples, batch_first=True, padding_value=self.tokenizer.pad_token_id)
+
+    def _tensorize_mask(self, examples: List[torch.Tensor]) -> torch.Tensor:
+        length_of_first = examples[0].size(0)
+        are_tensors_same_length = all(x.size(0) == length_of_first for x in examples)
+        if are_tensors_same_length:
+            return torch.stack(examples, dim=0)
+        else:
+            if self.tokenizer._pad_token is None:
+                raise ValueError(
+                    "You are attempting to pad samples but the tokenizer you are using"
+                    f" ({self.tokenizer.__class__.__name__}) does not have one."
+                )
+            return pad_sequence(examples, batch_first=True, padding_value=False)
+
+
+
+    def mask_tokens(self, inputs: List[torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Prepare masked tokens inputs/labels for masked language modeling: 80% MASK, 10% random, 10% original.
+        """
+
+        if self.tokenizer.mask_token is None:
+            raise ValueError(
+                "This tokenizer does not have a mask token which is necessary for masked language modeling. Remove the --mlm flag if you want to use this tokenizer."
+            )
+        [inputs, tomask, classes] = inputs
+        labels = inputs.clone()
+        # We sample a few tokens in each sequence for masked-LM training (with probability args.mlm_probability defaults to 0.15 in Bert/RoBERTa)
+        # probability_matrix = torch.full(labels.shape, self.mlm_probability)
+
+        probability_matrix = torch.zeros(labels.shape, dtype=torch.float)
+        for i, p in enumerate(self.mlm_probability):
+            probability_matrix[classes == i] = p
+        
+        special_tokens_mask = [
+            self.tokenizer.get_special_tokens_mask(val, already_has_special_tokens=True) for val in labels.tolist()
+        ]
+        probability_matrix.masked_fill_(torch.tensor(special_tokens_mask, dtype=torch.bool), value=0.0)
+        probability_matrix.masked_fill_(tomask.eq(False), value=0.0)
+        if self.tokenizer._pad_token is not None:
+            padding_mask = labels.eq(self.tokenizer.pad_token_id)
+            probability_matrix.masked_fill_(padding_mask, value=0.0)
+        
+        masked_indices = torch.bernoulli(probability_matrix).bool()
+        labels[~masked_indices] = -100  # We only compute loss on masked tokens
+
+        # 80% of the time, we replace masked input tokens with tokenizer.mask_token ([MASK])
+        indices_replaced = torch.bernoulli(torch.full(labels.shape, 0.8)).bool() & masked_indices
+        inputs[indices_replaced] = self.tokenizer.convert_tokens_to_ids(self.tokenizer.mask_token)
+
+        # 10% of the time, we replace masked input tokens with random word
+        indices_random = torch.bernoulli(torch.full(labels.shape, 0.5)).bool() & masked_indices & ~indices_replaced
+        random_words = torch.randint(len(self.tokenizer), labels.shape, dtype=torch.long)
+        inputs[indices_random] = random_words[indices_random]
+        del tomask
+        # The rest of the time (10% of the time) we keep the masked input tokens unchanged
+        return inputs, labels

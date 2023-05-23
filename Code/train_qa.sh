@@ -23,7 +23,7 @@ MAX_SEQ=256
 # wandb login 98d0804992a30ee86b8971c931bffcfeff2d5640
 
 language='Hindi'
-pretrainModel='l3cube140k44k_en_hi_switch'
+pretrainModel='en_hi_switch_inverted_aux_new'
 
 # To run Residual Bert experiments:
 # Code/./train_qa.sh QA_EN_HI bert-base-multilingual-cased residual-bert_4_0.2

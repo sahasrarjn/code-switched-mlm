@@ -31,22 +31,22 @@ sourceDir=${2:-'../../../Data/MLM/withLIDtags/Hindi/combined'}
 
 ## English-Hindi
     # Baseline: masktype: all-token
-    targetFile='../en_hi_baseline.txt'
-    sourceDir='../../../Data/MLM/withLIDtags/Hindi/combined'
-
+    # targetFile='../Hindi/en_hi_baseline.txt'
+    # sourceDir='../../../Data/MLM/withLIDtags/Hindi/combined'
+    
     # Experiment Switch Inverted LID
     # Replace EN with HI and HI with EN (example)
-    # targetFile='../en_hi_switch_inverted.txt'
-    # sourceDir='../../experiments/invertLID'
+    targetFile='../en_hi_switch_inverted.txt'
+    sourceDir='../../experiments/invertLID'
 
     # Standard Switch MLM
     # Use combined.txt
-    # targetFile='../en_hi_switch.txt'
+    # targetFile='../Hindi/en_hi_switch.txt'
     # sourceDir='../../../Data/MLM/withLIDtags/Hindi/combined'
 
     # FreqMLM
     # targetFile='../Hindi/en_hi_freq.txt'
-    # sourceDir='../../../freqMLM/data/Hindi/Hindi-freqmlm-lidtags-processed-noamb.txt'
+    # sourceDir='../../../freqMLM/data/Hindi/Hindi-freqmlm-lidtags-processed-nll.txt'
 
     # Experiment: Pretrain with fine tune data (SA)
     # targetFile='../Hindi/en_hi_sa_baseline.txt'
@@ -116,5 +116,5 @@ sourceDir=${2:-'../../../Data/MLM/withLIDtags/Hindi/combined'}
 python3 preprocessMLMdata.py \
     --source $sourceDir \
     --target $targetFile \
-    --tokenizer-name xlm-roberta-base \
-    --mask-type all-tokens
+    --tokenizer-name bert-base-multilingual-cased \
+    --mask-type around-switch
