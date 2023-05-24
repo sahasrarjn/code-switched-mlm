@@ -1,3 +1,14 @@
+'''
+Generate frequence MLM tags using the input vocab file and input code switched sentences
+
+Input args:
+> -l, --lang: Matrix lanauge for the code switched text data. Options: [HI, ES, ML, TA]
+> -a, --algo: Algorithm for Freq MLM. Options: [x-hit, nll]
+
+
+This script generated two file, defined below as processed_file and processed_file_noamb. As name suggest the later file no not contain any ambiguous lid tags and mark them as either the matrix or the embedded langauge
+'''
+
 from distutils.command.config import LANG_EXT
 import os
 import re
@@ -6,7 +17,7 @@ import numpy as np
 from tqdm import tqdm
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-l', '--lang', type=str, default='HI', help='EN-X, Language X for CS data')
+parser.add_argument('-l', '--lang', type=str, default='HI', help='X-EN, Language X for CS data')
 parser.add_argument('-a', '--algo', type=str, default='nll', choices=['nll', 'x-hit'], help='Masking algorithm')
 args = parser.parse_args()
 
@@ -25,15 +36,23 @@ else:   raise Exception('Invalid language id')
 
 
 os.makedirs(f'../data/{Lang}', exist_ok=True)
-sentence_file = f'../../Data/MLM/{Lang}/all_clean.txt'
-processed_file = f'../data/{Lang}/{Lang}-freqmlm-lidtags-processed-{args.algo}.txt'
-processed_file_noamb = f'../data/{Lang}/{Lang}-freqmlm-lidtags-processed-{args.algo}-noamb.txt'
-output_file = f'../data/{Lang}/{Lang}-freqmlm-lidtags.txt'
+
+# Google no swear words
 google_10k_words = '../data/google-10000-english-no-swears.txt'
 
+# Input sentence file
+sentence_file = f'../../Data/MLM/{Lang}/all_clean.txt'
+
+
+# Output LID tagged files
+processed_file = f'../../Data/LIDtagged/{Lang}/{Lang}-freqmlm-lidtags-processed-{args.algo}.txt'
+processed_file_noamb = f'../../Data/LIDtagged/{Lang}/{Lang}-freqmlm-lidtags-processed-{args.algo}-noamb.txt'
+
+
+# Input vocabulary files
 EN_VOCAB = '../vocab/vocab_EN.txt'
 X_VOCAB = f'../vocab/vocab_{lang}.txt'
-x_aksharantar_vocab = f'../vocab/aksharantar/vocab_{lang}.txt' if lang != 'ES' else None
+x_aksharantar_vocab = f'../vocab/aksharantar/vocab_{lang}.txt' if (lang != 'ES' and args.algo == 'x-hit') else None
 
 
 
@@ -150,13 +169,10 @@ for sentence in tqdm(sentences):
         else:
             raise NotImplementedError
 
-        # outfile.write(f'{mask} ')
         if args.algo == 'nll': processed_noamb.write(word + '\t' + f'{mask if mask[:3] != "AMB" else mask[-2:]}' + '\n')
         processedfile.write(word + '\t' + mask + '\n')
-    # outfile.write('\n')
     if args.algo == 'nll': processed_noamb.write('\n')
     processedfile.write('\n')
 
-# outfile.close()
 if args.algo == 'nll': processed_noamb.close()
 processedfile.close()

@@ -1,3 +1,8 @@
+'''
+Generate vocabulary file from OPUS dataset
+'''
+
+
 import re
 import csv
 import glob

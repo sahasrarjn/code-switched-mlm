@@ -6,4 +6,4 @@ oldCode
 runs
 wandb
 oldPretrainedModels
-*.txt
+.vscode

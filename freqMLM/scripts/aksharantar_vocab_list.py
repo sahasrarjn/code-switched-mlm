@@ -1,3 +1,12 @@
+'''
+Generate vocabulary file from Aksharantar vocab dataset
+
+Input args:
+    -s, --source:   Source dir
+    -d, --dest:     Output vocab file
+'''
+
+
 import os
 import json
 import argparse

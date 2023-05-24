@@ -1,3 +1,7 @@
+'''
+Generate input file with maskable tokens for training. This file tokenizes the words and identify maskable tokens.
+'''
+
 from genericpath import isfile
 import os
 import argparse
@@ -47,12 +51,8 @@ def mask_around_switch_points(words, langs, tokenMap):
 	
 	return maskTokens
 	
-if args.mask_type == "english-only":
-	implement_mask = mask_english_tokens
-elif args.mask_type == "all-tokens":
+if args.mask_type == "all-tokens":
 	implement_mask = mask_all_tokens
-elif args.mask_type == "english-hindi":
-	implement_mask = mask_english_hindi_tokens
 elif args.mask_type == "around-switch":
 	implement_mask = mask_around_switch_points
 

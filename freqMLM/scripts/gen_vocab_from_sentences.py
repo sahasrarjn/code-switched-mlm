@@ -1,3 +1,14 @@
+'''
+This file generated a vocabulary with negative log likelihood counts for each words occuring in the dataset.
+
+Input:
+-i, --input_file: Input dataset file with code switched sentences
+-o, --output_file: Output file for vocabulary with NLL scores
+-p, --output_plotfile: Output plot files
+
+** We already share the vocabulary we generated for the datasets we used. 
+'''
+
 import re
 import csv
 import sys

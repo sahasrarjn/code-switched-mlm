@@ -1,10 +1,18 @@
+'''
+Clean the input file
+
+Input args:
+    -s, --source: Source file
+    -t, --target: Target file
+'''
+
 import re
 import argparse
 from tqdm import tqdm
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-s', '--source', type=str, default='../Spanish/all.txt', help="Source file")
-parser.add_argument('-t', '--target', type=str, default='../Spanish/all_clean.txt', help="Target file")
+parser.add_argument('-s', '--source', type=str, default='../Hindi/all.txt', help="Source file")
+parser.add_argument('-t', '--target', type=str, default='../Hindi/all_clean.txt', help="Target file")
 args = parser.parse_args()
 
 

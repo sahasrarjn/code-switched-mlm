@@ -1,5 +1,9 @@
-true_file = '../../pretraining/Data/MLM/withLIDtags/Hindi/combined/combined.txt'
-pred_file = '../data/CSdata/emoji/combined-freqmlm-lidtags-processed.txt'
+'''
+Generate true/pred LID tags table as presented in the paper.
+'''
+
+true_file = '../../Data/LIDtagged/Hindi/pretagged'
+pred_file = '../../Data/LIDtagged/Hindi/Hindi-freqmlm-lidtags-processed.txt'
 
 PRED = {
     "HI" : 0,
@@ -32,9 +36,7 @@ for tfl, pfl in zip(tf_lines, pf_lines):
             continue
         else:
             print("#"*100 + '\n' + "ANOMALY: " + tfl[0] + " : " + pfl[0] + '\n' + "#"*100)
-    # if tfl[1] != 'OTHER' and pfl[1] == 'OTHER':
-    #     print(tfl[0], pfl[0], tfl[1], pfl[1])
-
+    
     tfl[1] = 'EN' if tfl[1] == 'ENG' else tfl[1]
     pfl[1] = 'EN' if pfl[1] == 'ENG' else pfl[1]
     CONFUSION_MAT[tfl[1]][pfl[1]] += 1

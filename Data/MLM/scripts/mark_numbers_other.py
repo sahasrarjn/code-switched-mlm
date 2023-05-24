@@ -1,3 +1,11 @@
+'''
+Generate input file with all words OTHER tags
+
+Input args:
+    -s, --source: Source file
+    -t, --target: Target file
+'''
+
 import argparse
 from tqdm import tqdm
 

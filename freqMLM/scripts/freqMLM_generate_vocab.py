@@ -1,3 +1,9 @@
+'''
+Generate vocabulary file from OPUS dataset
+
+** Need to setup the data path correctly for the prepublished datasets. We cannot provide access to those dataset.
+'''
+
 import re
 import csv
 import sys

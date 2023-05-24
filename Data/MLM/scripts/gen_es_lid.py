@@ -1,3 +1,11 @@
+'''
+Generate LID tags for EN-ES language pair code switched sentences
+
+Input args:
+    -s, --source: Source file
+    -t, --target: Target file
+'''
+
 import argparse
 from codeswitch.codeswitch import LanguageIdentification
 
