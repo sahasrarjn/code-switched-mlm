@@ -29,18 +29,18 @@ This project is based on the [GlueCoS](https://github.com/microsoft/GLUECoS). Th
 
 ### Get the dataset and setup environment
 1. If you intend to you the Aksharantar, download this [Google no swear dataset](https://github.com/first20hours/google-10000-english/blob/master/google-10000-english-no-swears.txt) to the freqMLM/data directory.
-2. We provide a small debug data with ~20 sentences in the repo to give an idea of the text format. We share the full pretraining data here: <!--- Add data --->. Furthermode, we used the GlueCoS finetune dataset for QA and SA which we cite in the paper.
+2. We provide a small debug data with ~20 sentences in the repo to give an idea of the text format. We share the full pretraining data here: [Dataset-CS-MLM](https://drive.google.com/drive/folders/1Cj2Q7bukTXQ2i-0BGKvSLEeUfgMgGMnn?usp=sharing). Furthermode, we used the GlueCoS finetune dataset for QA and SA which we cite in the paper.
 3. Setup conda environment : `conda env create --name envname --file=environments.yml` Or alternately you can use [requirements.txt](./requirements.txt) with python3.6.9 as the base python version to setup the enviroment.
 
 ### Generate tokenized input files:
 
 #### Standard MLM
-1. We provide a debug data file [here](./Data/MLM/Hindi/all_clean.txt) with no LID tags. We provide full dataset [here]().<!---Todo: add link ---> 
+1. We provide a debug data file [here](./Data/MLM/Hindi/all_clean.txt) with no LID tags. We provide full dataset [here](https://drive.google.com/drive/folders/1Cj2Q7bukTXQ2i-0BGKvSLEeUfgMgGMnn?usp=sharing).
 2. Use the [gen_single_tagged_data.py](./Data/MLM/scripts/gen_single_tagged_data.py) to generate fake LID tagged data. 
 3. Run [tokenizeData.sh](./Code/taggedData/utils/tokenizeData.sh) with the above file as source to generate tokenized input for the pretraining. Make sure the `mask-type` is set to `all-tokens`.
 
 #### Switch MLM
-1. We provide a debug LID tagged data file [here](./Data/LIDtagged/Hindi/pretagged.txt). We provide full dataset [here]().<!---Todo: add link ---> 
+1. We provide a debug LID tagged data file [here](./Data/LIDtagged/Hindi/pretagged.txt). We provide full dataset [here](https://drive.google.com/drive/folders/1Cj2Q7bukTXQ2i-0BGKvSLEeUfgMgGMnn?usp=sharing).
 2. Run [tokenizeData.sh](./Code/taggedData/utils/tokenizeData.sh) with the above file as source to generate tokenized input for the pretraining. Make sure the `mask-type` is set to `around-switch`.
 
 
@@ -52,8 +52,8 @@ This project is based on the [GlueCoS](https://github.com/microsoft/GLUECoS). Th
 ### Pretraining
 1. Use the [split_train_eval.py](./Code/taggedData/utils/split_train_eval.py) to split the tokenized input file into train and eval set. Make sure the input file has `.txt` extension.
 2. Use the pretraining script with correct training arguments and train, eval file.
-   - `pretrain.sh`: Pretraining without auxloss
-   - `pretrain_auxloss.sh`: Pretraining with auxloss
+   - `pretrain.sh`: Pretraining without auxloss. Run as: `./Code/pretrain.sh`
+   - `pretrain_auxloss.sh`: Pretraining with auxloss. Run as: `./Code/pretrain_auxloss.sh`
 3. After pretraining, pretrained model is save in the location you specify in the training script, which we further use to finetune and test our method on [GlueCoS](https://github.com/microsoft/GLUECoS) benchmark.
 
 
