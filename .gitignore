@@ -7,4 +7,4 @@ runs
 wandb
 oldPretrainedModels
 .vscode
-*.DS_Store
+.DS_Store
